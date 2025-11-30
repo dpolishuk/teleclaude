@@ -6,7 +6,19 @@
       "Bash(git init:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Skill(superpowers:writing-plans)"
+      "Skill(superpowers:writing-plans)",
+      "Skill(superpowers:subagent-driven-development)",
+      "Bash(git rev-parse:*)",
+      "Bash(go mod init:*)",
+      "Bash(go build:*)",
+      "Bash(./teleclaude)",
+      "Bash(TELEGRAM_BOT_TOKEN=test123 ./teleclaude:*)",
+      "Bash(go test:*)",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go vet:*)",
+      "Bash(go tool cover:*)",
+      "Bash(go fmt:*)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -30,18 +30,18 @@ func TestProjectKeyboard(t *testing.T) {
 func TestSessionKeyboard(t *testing.T) {
 	sessions := []*session.Session{
 		{
-			ID:          "s1",
-			ProjectName: "myapp",
-			Status:      session.StatusActive,
+			ID:           "s1",
+			ProjectName:  "myapp",
+			Status:       session.StatusActive,
 			TotalCostUSD: 1.23,
-			LastActive:  time.Now(),
+			LastActive:   time.Now(),
 		},
 		{
-			ID:          "s2",
-			ProjectName: "other",
-			Status:      session.StatusIdle,
+			ID:           "s2",
+			ProjectName:  "other",
+			Status:       session.StatusIdle,
 			TotalCostUSD: 0.45,
-			LastActive:  time.Now().Add(-2 * time.Hour),
+			LastActive:   time.Now().Add(-2 * time.Hour),
 		},
 	}
 
