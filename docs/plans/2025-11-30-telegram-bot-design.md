@@ -1,4 +1,4 @@
-# Claude Code Telegram Bot - Design Document
+# TeleClaude - Design Document
 
 ## Overview
 
@@ -52,7 +52,7 @@ NEW → ACTIVE → IDLE → (resume) → ACTIVE
 
 ### Metadata Storage
 
-Location: `~/.claude-telegram/sessions/<session_id>.yaml`
+Location: `~/.teleclaude/sessions/<session_id>.yaml`
 
 ```yaml
 session_id: "abc123"
@@ -204,7 +204,7 @@ Exit
 
 ## Configuration
 
-Location: `~/.claude-telegram/config.yaml`
+Location: `~/.teleclaude/config.yaml`
 
 ```yaml
 # Required
@@ -286,7 +286,7 @@ Systemd service:
 
 ```ini
 [Unit]
-Description=Claude Code Telegram Bot
+Description=TeleClaude
 After=network.target
 
 [Service]
