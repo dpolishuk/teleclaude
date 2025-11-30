@@ -81,9 +81,6 @@ func (c *Controller) Start(ctx context.Context, prompt string) error {
 	c.cmd = exec.CommandContext(ctx, "claude", args...)
 	c.cmd.Dir = c.workDir
 
-	// Use process group for clean termination
-	c.cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
 	var err error
 	c.ptmx, err = pty.Start(c.cmd)
 	if err != nil {
@@ -179,9 +176,9 @@ func (c *Controller) Stop() error {
 		c.cancel()
 	}
 
-	// Graceful termination via SIGTERM to process group
+	// Graceful termination via SIGTERM
 	if c.cmd != nil && c.cmd.Process != nil {
-		syscall.Kill(-c.cmd.Process.Pid, syscall.SIGTERM)
+		c.cmd.Process.Signal(syscall.SIGTERM)
 	}
 
 	return nil
@@ -192,7 +189,7 @@ func (c *Controller) ForceStop() error {
 	defer c.mu.Unlock()
 
 	if c.cmd != nil && c.cmd.Process != nil {
-		syscall.Kill(-c.cmd.Process.Pid, syscall.SIGKILL)
+		c.cmd.Process.Kill()
 	}
 
 	return nil
