@@ -1,0 +1,5 @@
+python-telegram-bot[job-queue]>=21.0
+sqlalchemy>=2.0
+aiosqlite>=0.19
+pyyaml>=6.0
+python-dotenv>=1.0

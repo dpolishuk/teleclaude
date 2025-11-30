@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "teleclaude"
+version = "0.1.0"
+description = "Telegram bot for Claude Code access"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-telegram-bot = {extras = ["job-queue"], version = "^21.0"}
+sqlalchemy = "^2.0"
+aiosqlite = "^0.19"
+pyyaml = "^6.0"
+python-dotenv = "^1.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-asyncio = "^0.23"
+ruff = "^0.4"
+mypy = "^1.10"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,39 @@
+# TeleClaude Configuration
+# Copy to ~/.teleclaude/config.yaml and customize
+
+# Authentication - Telegram user IDs allowed
+allowed_users:
+  - 12345678  # Replace with your Telegram user ID
+
+# Registered projects
+projects:
+  # myapp: /home/user/projects/myapp
+
+# Directory sandbox - allowed base paths
+sandbox:
+  allowed_paths:
+    - /home/user/projects
+
+# Claude settings
+claude:
+  max_turns: 50
+  permission_mode: "acceptEdits"
+  max_budget_usd: 10.0
+
+# Approval rules
+approval:
+  dangerous_commands:
+    - "rm -rf"
+    - "git push --force"
+    - "sudo"
+  require_approval_for:
+    - "Bash"
+
+# Streaming behavior
+streaming:
+  edit_throttle_ms: 1000
+  chunk_size: 3800
+
+# Database
+database:
+  path: ~/.teleclaude/teleclaude.db
