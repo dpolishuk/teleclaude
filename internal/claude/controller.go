@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/creack/pty"
+	ansi "github.com/leaanthony/go-ansi-parser"
 )
 
 type Controller struct {
@@ -108,12 +110,38 @@ func (c *Controller) Start(ctx context.Context, prompt string) error {
 	return nil
 }
 
+func cleanANSI(text string) string {
+	cleaned, err := ansi.Cleanse(text)
+	if err != nil {
+		return text
+	}
+	return cleaned
+}
+
 func (c *Controller) streamOutput() {
 	defer close(c.Output)
 
 	messages := make(chan *Message, 100)
+
+	// Create a pipe to clean ANSI codes before parsing
+	pr, pw := io.Pipe()
+
+	// Read from PTY, clean ANSI, write to pipe
 	go func() {
-		c.parser.ParseStream(c.ptmx, messages)
+		defer pw.Close()
+		scanner := bufio.NewScanner(c.ptmx)
+		scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			cleanedLine := cleanANSI(line)
+			pw.Write([]byte(cleanedLine + "\n"))
+		}
+	}()
+
+	// Parse cleaned output
+	go func() {
+		c.parser.ParseStream(pr, messages)
 		close(messages)
 	}()
 
