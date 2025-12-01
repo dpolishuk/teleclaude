@@ -8,6 +8,7 @@ from telegram.ext import (
 )
 
 from src.config.settings import Config
+from src.commands import CommandRegistry
 from .middleware import auth_middleware
 from .handlers import (
     start,
@@ -34,6 +35,9 @@ def create_application(config: Config) -> Application:
 
     # Store config in bot_data for handlers to access
     app.bot_data["config"] = config
+
+    # Initialize command registry
+    app.bot_data["command_registry"] = CommandRegistry()
 
     # Command handlers with auth middleware
     commands = [

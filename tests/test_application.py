@@ -39,3 +39,21 @@ def test_create_application_stores_config(mock_config):
         create_application(mock_config)
 
         assert mock_app.bot_data["config"] == mock_config
+
+
+def test_create_application_has_command_registry(mock_config):
+    """Application has CommandRegistry in bot_data."""
+    from src.commands import CommandRegistry
+
+    with patch("src.bot.application.Application") as MockApp:
+        mock_builder = MagicMock()
+        mock_app = MagicMock()
+        mock_builder.token.return_value = mock_builder
+        mock_builder.build.return_value = mock_app
+        mock_app.bot_data = {}
+        MockApp.builder.return_value = mock_builder
+
+        app = create_application(mock_config)
+
+        assert "command_registry" in app.bot_data
+        assert isinstance(app.bot_data["command_registry"], CommandRegistry)
