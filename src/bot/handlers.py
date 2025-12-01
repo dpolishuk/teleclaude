@@ -434,6 +434,9 @@ async def _execute_claude_prompt(
                             await streamer.append_text(result_info)
 
                 elif isinstance(message, ResultMessage):
+                    # Update session with Claude session ID for continuity
+                    if session and message.session_id:
+                        session.claude_session_id = message.session_id
                     # Update session cost (if session exists)
                     if session and message.total_cost_usd:
                         session.total_cost_usd += message.total_cost_usd
@@ -488,19 +491,27 @@ async def _create_session(
 
 async def resume_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /resume command - show project selection."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("resume_cmd: Starting /resume command")
+
     projects = scan_projects()
+    logger.info(f"resume_cmd: Found {len(projects)} projects")
 
     if not projects:
+        logger.info("resume_cmd: No projects found")
         await update.message.reply_text(
             "❌ No Claude Code sessions found in ~/.claude/projects/"
         )
         return
 
     keyboard = build_project_keyboard(projects)
+    logger.info(f"resume_cmd: Built keyboard with {len(keyboard.inline_keyboard)} rows")
     await update.message.reply_text(
         "📁 Select a project to resume:",
         reply_markup=keyboard,
     )
+    logger.info("resume_cmd: Sent message with keyboard")
 
 
 async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

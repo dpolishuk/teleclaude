@@ -76,11 +76,12 @@ def create_claude_options(
     # Resume from previous Claude session if available
     if session and session.claude_session_id:
         # Use resume_mode to determine which parameter to use
-        if resume_mode == "continue":
-            options.resume = session.claude_session_id
-        else:
-            # Default to fork_session (safe mode)
+        # Default to resume (continue) for seamless conversation continuity
+        if resume_mode == "fork":
             options.fork_session = session.claude_session_id
+        else:
+            # Default to resume - identical to Claude Code behavior
+            options.resume = session.claude_session_id
 
     return options
 
