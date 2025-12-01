@@ -159,9 +159,9 @@ def test_build_session_keyboard_truncates_long_previews():
     keyboard = build_session_keyboard(sessions)
 
     button = keyboard.inline_keyboard[0][0]
-    # The preview is already truncated by parse_session_preview
+    # The preview must be truncated to Telegram's 64-char limit
     assert button.text.endswith("...")
-    assert len(button.text) == 103
+    assert len(button.text) == 64  # Telegram's maximum button text length
 
 
 def test_build_session_keyboard_empty_list():
@@ -170,6 +170,26 @@ def test_build_session_keyboard_empty_list():
 
     assert isinstance(keyboard, InlineKeyboardMarkup)
     assert len(keyboard.inline_keyboard) == 0
+
+
+def test_build_project_keyboard_truncates_long_display_names():
+    """build_project_keyboard truncates display names that exceed 64 chars."""
+    long_path = "/home/user/very/long/path/to/some/deeply/nested/project/directory/structure"
+    projects = [
+        Project(
+            name="-home-user-very-long-path",
+            display_name=long_path,  # 78 characters
+            path=Path("/home/user/.claude/projects/-home-user-very-long-path"),
+        ),
+    ]
+
+    keyboard = build_project_keyboard(projects)
+
+    button = keyboard.inline_keyboard[0][0]
+    # The display name must be truncated to Telegram's 64-char limit
+    assert button.text.endswith("...")
+    assert len(button.text) == 64  # Telegram's maximum button text length
+    assert button.callback_data == "resume_project:-home-user-very-long-path"
 
 
 def test_build_mode_keyboard_creates_fork_and_continue_buttons():

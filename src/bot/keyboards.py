@@ -8,6 +8,9 @@ This module provides keyboard builders for the /resume command flow:
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from src.claude.sessions import Project, SessionInfo
 
+# Telegram's maximum button text length
+TELEGRAM_BUTTON_TEXT_LIMIT = 64
+
 
 def build_project_keyboard(projects: list[Project]) -> InlineKeyboardMarkup:
     """Build project selection keyboard.
@@ -22,8 +25,12 @@ def build_project_keyboard(projects: list[Project]) -> InlineKeyboardMarkup:
     buttons = []
 
     for project in projects:
+        display_text = project.display_name
+        if len(display_text) > TELEGRAM_BUTTON_TEXT_LIMIT:
+            display_text = display_text[:61] + "..."
+
         button = InlineKeyboardButton(
-            text=project.display_name,
+            text=display_text,
             callback_data=f"resume_project:{project.name}",
         )
         buttons.append([button])
@@ -44,8 +51,12 @@ def build_session_keyboard(sessions: list[SessionInfo]) -> InlineKeyboardMarkup:
     buttons = []
 
     for session in sessions:
+        preview_text = session.preview
+        if len(preview_text) > TELEGRAM_BUTTON_TEXT_LIMIT:
+            preview_text = preview_text[:61] + "..."
+
         button = InlineKeyboardButton(
-            text=session.preview,
+            text=preview_text,
             callback_data=f"resume_session:{session.session_id}",
         )
         buttons.append([button])
