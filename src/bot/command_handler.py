@@ -12,15 +12,11 @@ async def handle_claude_command(
 
     If command needs args, prompts user and stores pending state.
     Otherwise executes immediately.
+
+    Commands work without an active session (sessionless mode uses /tmp).
+    With a session, commands have access to project files.
     """
     registry = context.bot_data.get("command_registry")
-    session = context.user_data.get("current_session")
-
-    if not session:
-        await update.message.reply_text(
-            "❌ No active session. Use /new to start one."
-        )
-        return
 
     # Extract command name from message
     text = update.message.text

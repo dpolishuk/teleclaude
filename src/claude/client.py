@@ -14,14 +14,14 @@ from src.claude.hooks import check_dangerous_command
 
 def create_claude_options(
     config: Config,
-    session: Session,
+    session: Session | None = None,
     hooks: dict | None = None,
 ) -> ClaudeAgentOptions:
     """Build ClaudeAgentOptions from config and session.
 
     Args:
         config: Application configuration.
-        session: Current user session.
+        session: Current user session (optional for sessionless commands).
         hooks: Optional custom hooks dict. If None, uses default dangerous command hooks.
 
     Returns:
@@ -35,17 +35,24 @@ def create_claude_options(
             ],
         }
 
+    # Determine working directory
+    if session:
+        cwd = session.current_directory or session.project_path
+    else:
+        # Sessionless mode - use /tmp for safety
+        cwd = "/tmp"
+
     options = ClaudeAgentOptions(
         allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
         permission_mode=config.claude.permission_mode,
         max_turns=config.claude.max_turns,
         max_budget_usd=config.claude.max_budget_usd,
-        cwd=session.current_directory or session.project_path,
+        cwd=cwd,
         hooks=hooks,
     )
 
     # Resume from previous Claude session if available
-    if session.claude_session_id:
+    if session and session.claude_session_id:
         options.fork_session = session.claude_session_id
 
     return options
@@ -57,14 +64,14 @@ class TeleClaudeClient:
     def __init__(
         self,
         config: Config,
-        session: Session,
+        session: Session | None = None,
         hooks: dict | None = None,
     ):
         """Initialize with configuration and session.
 
         Args:
             config: Application configuration.
-            session: Current user session.
+            session: Current user session (optional for sessionless commands).
             hooks: Optional custom hooks for tool approval.
         """
         self.config = config

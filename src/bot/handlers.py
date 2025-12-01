@@ -369,8 +369,8 @@ async def _execute_claude_prompt(
                             await streamer.append_text(result_info)
 
                 elif isinstance(message, ResultMessage):
-                    # Update session cost
-                    if message.total_cost_usd:
+                    # Update session cost (if session exists)
+                    if session and message.total_cost_usd:
                         session.total_cost_usd += message.total_cost_usd
 
             # Final flush
