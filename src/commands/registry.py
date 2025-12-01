@@ -51,6 +51,7 @@ class CommandRegistry:
         """Substitute arguments into command prompt.
 
         Handles both $ARGUMENTS (all args) and $1, $2, etc. (positional).
+        If no placeholders exist and args are provided, appends them to prompt.
 
         Args:
             cmd: The command to substitute into.
@@ -60,6 +61,7 @@ class CommandRegistry:
             Prompt with arguments substituted.
         """
         prompt = cmd.prompt
+        has_placeholders = "$ARGUMENTS" in prompt or "$1" in prompt
 
         # Substitute $ARGUMENTS with full args string
         prompt = prompt.replace("$ARGUMENTS", args)
@@ -68,6 +70,10 @@ class CommandRegistry:
         parts = args.split()
         for i, part in enumerate(parts, start=1):
             prompt = prompt.replace(f"${i}", part)
+
+        # If no placeholders and args provided, append them
+        if args and not has_placeholders:
+            prompt = f"{prompt}\n\nARGUMENTS: {args}"
 
         return prompt
 
