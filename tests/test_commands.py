@@ -306,3 +306,37 @@ async def test_handle_claude_command_needs_args():
     call_args = mock_update.message.reply_text.call_args[0][0]
     assert "requires input" in call_args
     assert "pending_command" in mock_context.user_data
+
+
+# Task 9: Full Integration Test
+@pytest.mark.asyncio
+async def test_full_command_flow(tmp_path, monkeypatch):
+    """Full flow: scan commands, register, execute."""
+    from src.commands import CommandRegistry, scan_commands
+
+    # Setup mock home with commands
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setattr(Path, "home", lambda: home)
+
+    cmd_dir = home / ".claude" / "commands"
+    cmd_dir.mkdir(parents=True)
+    (cmd_dir / "greet.md").write_text("""---
+description: Greet someone
+---
+Say hello to $ARGUMENTS
+""")
+
+    # Create registry and scan
+    registry = CommandRegistry()
+    commands = scan_commands(project_path=None)
+
+    # Verify scan found command
+    assert len(commands) == 1
+    assert commands[0].name == "greet"
+    assert commands[0].needs_args is True
+
+    # Test substitution
+    cmd = commands[0]
+    result = registry.substitute_args(cmd, "World")
+    assert result == "Say hello to World"
