@@ -31,9 +31,18 @@ from .callbacks import handle_callback
 from .command_handler import handle_claude_command
 
 
+async def post_init(application: Application) -> None:
+    """Initialize commands after bot is ready."""
+    registry = application.bot_data["command_registry"]
+    # Load plugin/personal commands at startup (no project context yet)
+    count = await registry.refresh(application.bot, project_path=None)
+    import logging
+    logging.getLogger(__name__).info(f"Loaded {count} Claude commands at startup")
+
+
 def create_application(config: Config) -> Application:
     """Create and configure Telegram Application."""
-    app = Application.builder().token(config.telegram_token).build()
+    app = Application.builder().token(config.telegram_token).post_init(post_init).build()
 
     # Store config in bot_data for handlers to access
     app.bot_data["config"] = config
