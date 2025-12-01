@@ -231,6 +231,13 @@ async def handle_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Handle regular text messages (Claude interaction)."""
+    # Check if awaiting custom project path from /new -> Other
+    if context.user_data.get("awaiting_path"):
+        context.user_data["awaiting_path"] = False
+        path = update.message.text.strip()
+        await _create_session(update, context, path)
+        return
+
     session = context.user_data.get("current_session")
 
     if not session:
