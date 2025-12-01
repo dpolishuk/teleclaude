@@ -9,6 +9,8 @@ A personal Telegram bot that brings Claude Code's agentic coding capabilities to
 
 ## Architecture Overview
 
+![TeleClaude Architecture](assets/architecture_mindmap.png)
+
 ```mermaid
 flowchart TB
     subgraph Telegram["Telegram"]
@@ -60,9 +62,7 @@ flowchart TB
     TH --> CFG
 ```
 
-### Deep Dive
 
-![TeleClaude Deep Dive Architecture](assets/architecture_mindmap.png)
 
 ## Message Flow
 
