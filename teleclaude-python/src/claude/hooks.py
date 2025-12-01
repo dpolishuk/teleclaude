@@ -1,8 +1,8 @@
 """Claude SDK hooks for approval workflow."""
-from typing import Any
+from typing import Any, Callable
 
-# Patterns that require user approval
-DANGEROUS_PATTERNS = [
+# Default patterns that require user approval (must be lowercase)
+DANGEROUS_PATTERNS: list[str] = [
     "rm -rf",
     "rm -r /",
     "sudo rm",
@@ -20,10 +20,32 @@ DANGEROUS_PATTERNS = [
 ]
 
 
-def is_dangerous_command(command: str) -> bool:
-    """Check if command matches dangerous patterns."""
+def is_dangerous_command(
+    command: str, patterns: list[str] | None = None
+) -> bool:
+    """Check if command matches dangerous patterns.
+
+    Args:
+        command: The command to check.
+        patterns: Custom patterns to check against. If None, uses DANGEROUS_PATTERNS.
+
+    Returns:
+        True if command matches any dangerous pattern.
+    """
+    check_patterns = patterns if patterns is not None else DANGEROUS_PATTERNS
     command_lower = command.lower()
-    return any(pattern in command_lower for pattern in DANGEROUS_PATTERNS)
+    return any(pattern.lower() in command_lower for pattern in check_patterns)
+
+
+def _find_matched_pattern(
+    command: str, patterns: list[str]
+) -> str:
+    """Find which pattern matched the command."""
+    command_lower = command.lower()
+    return next(
+        (p for p in patterns if p.lower() in command_lower),
+        "dangerous pattern",
+    )
 
 
 async def check_dangerous_command(
@@ -31,7 +53,10 @@ async def check_dangerous_command(
     tool_use_id: str | None,
     context: dict[str, Any],
 ) -> dict[str, Any]:
-    """PreToolUse hook to intercept dangerous operations."""
+    """PreToolUse hook to intercept dangerous operations.
+
+    Uses the default DANGEROUS_PATTERNS list.
+    """
     tool_name = input_data.get("tool_name", "")
     tool_input = input_data.get("tool_input", {})
 
@@ -41,11 +66,7 @@ async def check_dangerous_command(
     command = tool_input.get("command", "")
 
     if is_dangerous_command(command):
-        # Find which pattern matched
-        matched = next(
-            (p for p in DANGEROUS_PATTERNS if p in command.lower()),
-            "dangerous pattern",
-        )
+        matched = _find_matched_pattern(command, DANGEROUS_PATTERNS)
 
         return {
             "hookSpecificOutput": {
@@ -58,10 +79,67 @@ async def check_dangerous_command(
     return {}
 
 
+def create_dangerous_command_hook(
+    patterns: list[str],
+) -> Callable[[dict[str, Any], str | None, dict[str, Any]], Any]:
+    """Create a hook function with custom dangerous patterns.
+
+    Args:
+        patterns: List of patterns to check against.
+
+    Returns:
+        An async hook function for PreToolUse.
+    """
+    async def hook(
+        input_data: dict[str, Any],
+        tool_use_id: str | None,
+        context: dict[str, Any],
+    ) -> dict[str, Any]:
+        tool_name = input_data.get("tool_name", "")
+        tool_input = input_data.get("tool_input", {})
+
+        if tool_name != "Bash":
+            return {}
+
+        command = tool_input.get("command", "")
+
+        if is_dangerous_command(command, patterns):
+            matched = _find_matched_pattern(command, patterns)
+
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "ask",
+                    "permissionDecisionReason": f"Command contains: {matched}",
+                }
+            }
+
+        return {}
+
+    return hook
+
+
 def create_approval_hooks(dangerous_commands: list[str] | None = None) -> dict:
-    """Create hooks dict for ClaudeAgentOptions."""
+    """Create hooks dict for ClaudeAgentOptions.
+
+    Args:
+        dangerous_commands: Optional list of additional dangerous patterns.
+            If provided, these are combined with DANGEROUS_PATTERNS.
+            If None, only DANGEROUS_PATTERNS are used.
+
+    Returns:
+        A dict suitable for passing to ClaudeAgentOptions hooks parameter.
+    """
+    if dangerous_commands is None:
+        # Use default hook
+        hook = check_dangerous_command
+    else:
+        # Combine default patterns with custom ones
+        combined_patterns = list(DANGEROUS_PATTERNS) + dangerous_commands
+        hook = create_dangerous_command_hook(combined_patterns)
+
     return {
         "PreToolUse": {
-            "Bash": [check_dangerous_command],
+            "Bash": [hook],
         }
     }
