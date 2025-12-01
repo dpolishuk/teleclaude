@@ -1,8 +1,9 @@
 """Telegram bot command handlers."""
+import asyncio
 from telegram import Update
+from telegram.constants import ChatAction
 from telegram.ext import ContextTypes
 
-import json
 from claude_agent_sdk import (
     AssistantMessage,
     UserMessage,
@@ -18,6 +19,45 @@ from src.claude import TeleClaudeClient, MessageStreamer
 from src.claude.streaming import escape_html
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
+
+
+class TypingIndicator:
+    """Sends typing indicator while Claude is working.
+
+    Telegram's typing indicator lasts ~5 seconds, so we send it
+    repeatedly every 4 seconds until stopped.
+    """
+
+    def __init__(self, chat_id: int, bot):
+        self.chat_id = chat_id
+        self.bot = bot
+        self._task: asyncio.Task | None = None
+        self._running = False
+
+    async def _send_typing_loop(self):
+        """Send typing indicator every 4 seconds."""
+        while self._running:
+            try:
+                await self.bot.send_chat_action(
+                    chat_id=self.chat_id,
+                    action=ChatAction.TYPING
+                )
+            except Exception:
+                pass  # Ignore errors
+            await asyncio.sleep(4)
+
+    def start(self):
+        """Start sending typing indicators."""
+        if not self._running:
+            self._running = True
+            self._task = asyncio.create_task(self._send_typing_loop())
+
+    def stop(self):
+        """Stop sending typing indicators."""
+        self._running = False
+        if self._task:
+            self._task.cancel()
+            self._task = None
 
 
 HELP_TEXT = """
@@ -333,6 +373,10 @@ async def _execute_claude_prompt(
         reply_markup=cancel_keyboard(),
     )
 
+    # Start typing indicator
+    typing = TypingIndicator(update.effective_chat.id, context.bot)
+    typing.start()
+
     # Create streamer for this response
     streamer = MessageStreamer(
         message=thinking_msg,
@@ -386,6 +430,7 @@ async def _execute_claude_prompt(
     except Exception as e:
         await thinking_msg.edit_text(f"❌ Error: {str(e)}")
     finally:
+        typing.stop()
         context.user_data.pop("active_client", None)
 
 
