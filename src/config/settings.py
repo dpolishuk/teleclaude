@@ -67,7 +67,7 @@ class ClaudeConfig:
     """Claude SDK settings."""
 
     max_turns: int = 50
-    permission_mode: str = "acceptEdits"
+    permission_mode: str = "bypassPermissions"  # Allow all tools including MCP
     max_budget_usd: float = 10.0
 
 
@@ -227,7 +227,7 @@ def _parse_config(data: dict[str, Any]) -> Config:
     if "claude" in data:
         config.claude = ClaudeConfig(
             max_turns=data["claude"].get("max_turns", 50),
-            permission_mode=data["claude"].get("permission_mode", "acceptEdits"),
+            permission_mode=data["claude"].get("permission_mode", "bypassPermissions"),
             max_budget_usd=data["claude"].get("max_budget_usd", 10.0),
         )
 

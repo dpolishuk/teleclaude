@@ -65,7 +65,8 @@
       "Bash(pgrep:*)",
       "Bash(kill:*)",
       "Bash(git show:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(killall:*)"
     ]
   },
   "enabledMcpjsonServers": [
