@@ -73,3 +73,28 @@ async def test_streamer_throttles_edits(streamer, mock_message):
 
     # Should have fewer edits than appends due to throttling
     assert mock_message.edit_text.call_count < 10
+
+
+@pytest.mark.asyncio
+async def test_streamer_delayed_flush(streamer, mock_message):
+    """Pending content is eventually flushed after throttle expires."""
+    streamer.throttle_ms = 100  # 100ms throttle
+
+    # First append triggers immediate flush (no throttle yet)
+    await streamer.append_text("First")
+    await asyncio.sleep(0.01)  # Brief wait for async processing
+    initial_call_count = mock_message.edit_text.call_count
+
+    # Second append should schedule delayed flush (within throttle period)
+    await streamer.append_text(" Second")
+    await asyncio.sleep(0.01)  # Brief wait
+
+    # Should not have flushed yet (throttled)
+    assert mock_message.edit_text.call_count == initial_call_count
+
+    # Wait for throttle period to expire + buffer
+    await asyncio.sleep(0.15)  # 150ms total
+
+    # Delayed flush should have executed
+    assert mock_message.edit_text.call_count > initial_call_count
+    assert streamer.current_text == "First Second"

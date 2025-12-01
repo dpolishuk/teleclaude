@@ -52,8 +52,16 @@ class MessageStreamer:
 
         if elapsed >= self.throttle_ms:
             await self._do_flush()
-        else:
+        elif not self._pending_flush:
             self._pending_flush = True
+            asyncio.create_task(self._delayed_flush())
+
+    async def _delayed_flush(self) -> None:
+        """Flush after throttle period expires."""
+        await asyncio.sleep(self.throttle_ms / 1000)
+        async with self._lock:
+            if self._pending_flush:
+                await self._do_flush()
 
     async def _do_flush(self) -> None:
         """Actually send the edit to Telegram."""
@@ -99,6 +107,7 @@ class MessageStreamer:
                 self.current_text = final_text
             await self._do_flush()
 
-    def set_text(self, text: str) -> None:
+    async def set_text(self, text: str) -> None:
         """Replace current text entirely."""
-        self.current_text = text
+        async with self._lock:
+            self.current_text = text
