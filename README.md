@@ -2,8 +2,6 @@
 
 A Telegram bot for interacting with Claude Code from your mobile device.
 
-Successor to [RichardAtCT/claude-code-telegram](https://github.com/RichardAtCT/claude-code-telegram) using the Claude Agent SDK.
-
 ## Architecture Overview
 
 ```mermaid
