@@ -1,7 +1,7 @@
 """Test bot command handlers."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.bot.handlers import start, help_cmd, pwd, handle_message
+from src.bot.handlers import start, help_cmd, pwd, handle_message, refresh_commands
 
 
 @pytest.fixture
@@ -140,3 +140,33 @@ async def test_handle_message_with_session_calls_claude(mock_update, mock_contex
 
             # Should have called query with the user's message
             mock_client.query.assert_called_once_with("Hello Claude")
+
+
+@pytest.mark.asyncio
+async def test_refresh_commands_updates_registry(mock_update, mock_context):
+    """refresh_commands calls registry.refresh."""
+    mock_registry = AsyncMock()
+    mock_registry.refresh = AsyncMock(return_value=5)
+    mock_context.bot_data["command_registry"] = mock_registry
+    mock_context.user_data["current_session"] = MagicMock(project_path="/test")
+
+    await refresh_commands(mock_update, mock_context)
+
+    mock_registry.refresh.assert_called_once()
+    call_args = mock_update.message.reply_text.call_args[0][0]
+    assert "5" in call_args  # Shows command count
+
+
+@pytest.mark.asyncio
+async def test_refresh_commands_no_session(mock_update, mock_context):
+    """refresh_commands works without active session."""
+    mock_registry = AsyncMock()
+    mock_registry.refresh = AsyncMock(return_value=2)
+    mock_context.bot_data["command_registry"] = mock_registry
+    mock_context.user_data = {}
+
+    await refresh_commands(mock_update, mock_context)
+
+    mock_registry.refresh.assert_called_once_with(
+        mock_update.get_bot(), project_path=None
+    )

@@ -25,6 +25,7 @@ from .handlers import (
     git,
     export_session,
     handle_message,
+    refresh_commands,
 )
 from .callbacks import handle_callback
 
@@ -54,6 +55,7 @@ def create_application(config: Config) -> Application:
         ("pwd", pwd),
         ("git", git),
         ("export", export_session),
+        ("refresh", refresh_commands),
     ]
 
     for command, handler in commands:

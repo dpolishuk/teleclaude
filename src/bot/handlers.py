@@ -251,6 +251,21 @@ async def export_session(
     await update.message.reply_text(f"📤 Exporting session as {format_type}...")
 
 
+async def refresh_commands(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle /refresh command - rescan Claude commands."""
+    registry = context.bot_data.get("command_registry")
+    session = context.user_data.get("current_session")
+    project_path = session.project_path if session else None
+
+    count = await registry.refresh(update.get_bot(), project_path=project_path)
+
+    await update.message.reply_text(
+        f"🔄 Commands refreshed. {count} Claude command(s) loaded."
+    )
+
+
 async def handle_message(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
@@ -354,8 +369,13 @@ async def _create_session(
         # Store session in user_data for quick access
         context.user_data["current_session"] = session
 
+    # Refresh commands for this project
+    registry = context.bot_data.get("command_registry")
+    cmd_count = await registry.refresh(update.get_bot(), project_path=project_path)
+
     display_name = project_name or project_path
     await update.message.reply_text(
-        f"✅ Created new session for {display_name}\n\n"
+        f"✅ Created new session for {display_name}\n"
+        f"📋 {cmd_count} Claude command(s) available.\n\n"
         "Send a message to start chatting with Claude."
     )
