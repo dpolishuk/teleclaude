@@ -51,7 +51,8 @@
       "Bash(./venv/bin/python -m pytest tests/test_hooks.py -v)",
       "Bash(./venv/bin/python -m pytest tests/ -v)",
       "Bash(./venv/bin/python -m pytest:*)",
-      "Bash(./venv/bin/pip install:*)"
+      "Bash(./venv/bin/pip install:*)",
+      "Bash(rm:*)"
     ]
   },
   "enabledMcpjsonServers": [
