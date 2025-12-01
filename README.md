@@ -1,6 +1,6 @@
 # TeleClaude
 
-A Telegram bot for interacting with Claude Code from your mobile device.
+A personal Telegram bot that brings Claude Code's agentic coding capabilities to your phone. Chat with Claude to write code, edit files, run commands, and manage projects — all from Telegram with real-time streaming responses.
 
 ## Architecture Overview
 
