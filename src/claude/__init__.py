@@ -1,5 +1,5 @@
 """Claude integration module."""
-from .client import TeleClaudeClient, ClaudeOptions
+from .client import TeleClaudeClient, create_claude_options
 from .hooks import (
     is_dangerous_command,
     check_dangerous_command,
@@ -10,7 +10,7 @@ from .hooks import (
 
 __all__ = [
     "TeleClaudeClient",
-    "ClaudeOptions",
+    "create_claude_options",
     "is_dangerous_command",
     "check_dangerous_command",
     "create_approval_hooks",
