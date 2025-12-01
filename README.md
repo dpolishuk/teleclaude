@@ -16,6 +16,7 @@ flowchart TB
         TH["Telegram Handler<br/><i>python-telegram-bot</i>"]
         SM["Session Manager"]
         CC["Claude Controller<br/><i>PTY + JSON</i>"]
+        MCP["MCP Manager"]
 
         subgraph Support["Support Services"]
             FMT["Formatter<br/><i>inline annotations</i>"]
@@ -29,6 +30,11 @@ flowchart TB
         CLI["Claude Code CLI<br/><i>PTY subprocess</i>"]
     end
 
+    subgraph MCPServers["MCP Servers"]
+        SRV1["Server 1"]
+        SRV2["Server 2"]
+    end
+
     subgraph Storage["Storage"]
         CFG[("~/.teleclaude/config.yaml")]
         SESS[("~/.teleclaude/sessions/*.yaml")]
@@ -38,6 +44,9 @@ flowchart TB
     TH --> SM
     SM --> CC
     CC <-->|"stdin/stdout"| CLI
+    
+    SM --> MCP
+    MCP <-->|"stdio/http"| MCPServers
 
     TH --> FMT
     SM --> META
@@ -172,6 +181,8 @@ stateDiagram-v2
 - Multi-project support
 - Directory navigation commands
 - Git integration
+- **MCP Support**: Manage and use Model Context Protocol servers
+- **Dynamic Commands**: Automatically discovers Claude commands
 
 ## Requirements
 
@@ -212,6 +223,14 @@ allowed_users:
 
 projects:
   myapp: /path/to/your/project
+
+mcp:
+  servers:
+    filesystem:
+      command: "npx"
+      args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+      enabled: true
+
 ```
 
 4. Set environment variables:
@@ -246,6 +265,9 @@ python -m src.main
 | `/pwd` | Show current directory |
 | `/git [cmd]` | Git operations |
 | `/export [fmt]` | Export session |
+| `/models` | Select Claude model |
+| `/refresh` | Rescan Claude commands |
+| `/mcp` | Manage MCP servers |
 
 ## Inline Annotations
 
