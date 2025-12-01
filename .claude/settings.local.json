@@ -50,7 +50,8 @@
       "Bash(/root/.local/bin/poetry run pytest tests/test_formatting.py -v)",
       "Bash(./venv/bin/python -m pytest tests/test_hooks.py -v)",
       "Bash(./venv/bin/python -m pytest tests/ -v)",
-      "Bash(./venv/bin/python -m pytest:*)"
+      "Bash(./venv/bin/python -m pytest:*)",
+      "Bash(./venv/bin/pip install:*)"
     ]
   },
   "enabledMcpjsonServers": [

@@ -1,7 +1,6 @@
 """Test main entry point."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-import os
 
 
 def test_main_requires_token(tmp_path, monkeypatch):
