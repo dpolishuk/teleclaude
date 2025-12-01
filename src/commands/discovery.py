@@ -10,12 +10,87 @@ from .models import ClaudeCommand
 logger = logging.getLogger(__name__)
 
 
-def parse_command_file(path: Path, source: str = "personal") -> ClaudeCommand:
+def find_skill_file(skill_name: str) -> Path | None:
+    """Find a skill's SKILL.md file by name.
+
+    Searches in ~/.claude/plugins/*/skills/{skill_name}/SKILL.md
+
+    Args:
+        skill_name: Name of the skill (e.g., "brainstorming")
+
+    Returns:
+        Path to SKILL.md or None if not found.
+    """
+    plugins_dir = Path.home() / ".claude" / "plugins"
+    if not plugins_dir.is_dir():
+        return None
+
+    # Search all plugin skill directories
+    for skill_dir in plugins_dir.glob(f"**/skills/{skill_name}"):
+        skill_file = skill_dir / "SKILL.md"
+        if skill_file.is_file():
+            return skill_file
+
+    return None
+
+
+def expand_skill_references(prompt: str) -> str:
+    """Expand skill references in a prompt by inlining skill content.
+
+    Detects patterns like "brainstorming skill" or "use the X skill" and
+    replaces/appends the actual skill content.
+
+    Args:
+        prompt: Original prompt text.
+
+    Returns:
+        Prompt with skill content expanded inline.
+    """
+    # Pattern to detect skill references
+    # Matches: "brainstorming skill", "the brainstorming skill", "X skill"
+    skill_pattern = re.compile(r"(?:the\s+)?(\w+(?:-\w+)*)\s+skill", re.IGNORECASE)
+
+    expanded_skills = set()
+    skill_contents = []
+
+    for match in skill_pattern.finditer(prompt):
+        skill_name = match.group(1).lower()
+
+        # Skip if already expanded
+        if skill_name in expanded_skills:
+            continue
+
+        skill_file = find_skill_file(skill_name)
+        if skill_file:
+            try:
+                content = skill_file.read_text()
+                # Strip frontmatter if present
+                if content.startswith("---"):
+                    parts = content.split("---", 2)
+                    if len(parts) >= 3:
+                        content = parts[2].strip()
+
+                skill_contents.append(f"\n\n--- Skill: {skill_name} ---\n{content}")
+                expanded_skills.add(skill_name)
+                logger.debug(f"Expanded skill: {skill_name}")
+            except Exception as e:
+                logger.warning(f"Failed to read skill {skill_name}: {e}")
+
+    if skill_contents:
+        return prompt + "\n".join(skill_contents)
+
+    return prompt
+
+
+def parse_command_file(
+    path: Path, source: str = "personal", expand_skills: bool = False
+) -> ClaudeCommand:
     """Parse a .md command file into a ClaudeCommand.
 
     Args:
         path: Path to the .md file.
-        source: Where command came from ("personal" or "project").
+        source: Where command came from ("personal", "project", or "plugin").
+        expand_skills: If True, expand skill references in the prompt.
 
     Returns:
         Parsed ClaudeCommand.
@@ -35,6 +110,10 @@ def parse_command_file(path: Path, source: str = "personal") -> ClaudeCommand:
             except yaml.YAMLError:
                 pass  # Invalid YAML, skip frontmatter
             prompt = parts[2].strip()
+
+    # Expand skill references if requested (for plugin commands)
+    if expand_skills:
+        prompt = expand_skill_references(prompt)
 
     # Get description from frontmatter or first line of prompt
     description = frontmatter.get("description", "")
@@ -98,7 +177,7 @@ def scan_commands(project_path: str | None = None) -> list[ClaudeCommand]:
                         # Sanitize for Telegram: lowercase, only a-z 0-9 _, max 32 chars
                         cmd_name = re.sub(r"[^a-z0-9_]", "_", cmd_name.lower())[:32]
 
-                        cmd = parse_command_file(md_file, source="plugin")
+                        cmd = parse_command_file(md_file, source="plugin", expand_skills=True)
                         cmd.name = cmd_name  # Override with namespaced name
                         commands[cmd.name] = cmd
                     except Exception as e:
