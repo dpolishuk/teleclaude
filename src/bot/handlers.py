@@ -39,9 +39,12 @@ HELP_TEXT = """
 /git \\[cmd\\] \\- Git operations
 /export \\[fmt\\] \\- Export session
 /cost \\- Show usage costs
+/refresh \\- Rescan Claude commands
 
 *Help*
 /help \\- Show this message
+
+💡 Claude commands from \\.claude/commands/ appear in the / menu\\!
 """
 
 
