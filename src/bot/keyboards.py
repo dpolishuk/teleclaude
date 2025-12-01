@@ -134,6 +134,46 @@ def build_sessions_list_keyboard(sessions: list[SessionInfo]) -> InlineKeyboardM
     return InlineKeyboardMarkup(buttons)
 
 
+# Model definitions with descriptions
+MODELS = {
+    "sonnet": "Sonnet - balanced, daily coding",
+    "opus": "Opus - complex reasoning",
+    "haiku": "Haiku - fast, simple tasks",
+    "opusplan": "OpusPlan - Opus plans, Sonnet executes",
+}
+
+DEFAULT_MODEL = "sonnet"
+
+
+def build_models_keyboard(current_model: str | None = None) -> InlineKeyboardMarkup:
+    """Build model selection keyboard with descriptions.
+
+    Args:
+        current_model: Currently selected model (to show indicator)
+
+    Returns:
+        InlineKeyboardMarkup with vertical buttons, one per model.
+        Callback data pattern: select_model:<model_name>
+    """
+    buttons = []
+    current = current_model or DEFAULT_MODEL
+
+    for model_name, description in MODELS.items():
+        # Add checkmark to current model
+        if model_name == current:
+            display_text = f"✓ {description}"
+        else:
+            display_text = description
+
+        button = InlineKeyboardButton(
+            text=display_text,
+            callback_data=f"select_model:{model_name}",
+        )
+        buttons.append([button])
+
+    return InlineKeyboardMarkup(buttons)
+
+
 def build_mode_keyboard(session_id: str) -> InlineKeyboardMarkup:
     """Build Fork/Continue mode selection keyboard.
 

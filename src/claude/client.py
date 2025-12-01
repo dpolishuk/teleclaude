@@ -22,6 +22,7 @@ def create_claude_options(
     bot: Bot | None = None,
     chat_id: int | None = None,
     resume_mode: str | None = None,
+    model: str | None = None,
 ) -> ClaudeAgentOptions:
     """Build ClaudeAgentOptions from config and session.
 
@@ -34,6 +35,7 @@ def create_claude_options(
         bot: Telegram bot instance for permission prompts.
         chat_id: Telegram chat ID for permission prompts.
         resume_mode: Resume mode - "fork" for fork_session, "continue" for resume.
+        model: Claude model to use (sonnet, opus, haiku, opusplan).
 
     Returns:
         Configured ClaudeAgentOptions.
@@ -71,6 +73,7 @@ def create_claude_options(
         hooks=hooks,
         mcp_servers=mcp_servers,
         can_use_tool=can_use_tool_callback,
+        model=model,
     )
 
     # Resume from previous Claude session if available
@@ -105,6 +108,7 @@ class TeleClaudeClient:
         bot: Bot | None = None,
         chat_id: int | None = None,
         resume_mode: str | None = None,
+        model: str | None = None,
     ):
         """Initialize with configuration and session.
 
@@ -116,6 +120,7 @@ class TeleClaudeClient:
             bot: Telegram bot instance for permission prompts.
             chat_id: Telegram chat ID for permission prompts.
             resume_mode: Resume mode - "fork" for fork_session, "continue" for resume.
+            model: Claude model to use (sonnet, opus, haiku, opusplan).
         """
         self.config = config
         self.session = session
@@ -124,6 +129,7 @@ class TeleClaudeClient:
         self.bot = bot
         self.chat_id = chat_id
         self.resume_mode = resume_mode
+        self.model = model
         self._client: Optional[ClaudeSDKClient] = None
         self._options: Optional[ClaudeAgentOptions] = None
 
@@ -137,6 +143,7 @@ class TeleClaudeClient:
             self.bot,
             self.chat_id,
             self.resume_mode,
+            self.model,
         )
         self._client = ClaudeSDKClient(options=self._options)
         await self._client.__aenter__()

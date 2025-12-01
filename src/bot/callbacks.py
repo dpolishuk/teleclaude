@@ -8,7 +8,7 @@ from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude.permissions import get_permission_manager
 from src.claude.sessions import scan_sessions, decode_project_name
-from src.bot.keyboards import build_session_keyboard, build_mode_keyboard
+from src.bot.keyboards import build_session_keyboard, build_mode_keyboard, build_models_keyboard, MODELS
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,8 @@ async def handle_callback(
         "resume_mode": _handle_resume_mode,
         # /sessions command callback
         "select_session": _handle_select_session,
+        # /models command callback
+        "select_model": _handle_select_model,
     }
 
     handler = handlers.get(action)
@@ -381,4 +383,27 @@ async def _handle_select_session(
         f"✅ Session resumed!\n\n"
         f"📂 Project: {current_session.project_path}\n\n"
         "You can now continue chatting with Claude."
+    )
+
+
+async def _handle_select_model(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle model selection from /models command."""
+    query = update.callback_query
+
+    if not value or value not in MODELS:
+        await query.edit_message_text("❌ Invalid model selection.")
+        return
+
+    # Store model preference in user_data
+    context.user_data["model"] = value
+
+    logger.info(f"Model selected: {value} for user {update.effective_user.id}")
+
+    # Update message with new keyboard showing selection
+    keyboard = build_models_keyboard(value)
+    await query.edit_message_text(
+        f"Current model: {value}",
+        reply_markup=keyboard
     )

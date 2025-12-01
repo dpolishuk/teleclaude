@@ -21,7 +21,7 @@ from src.claude.formatting import format_tool_call, format_tool_result, format_s
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
 from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time
-from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard, build_sessions_list_keyboard
+from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard, build_sessions_list_keyboard, build_models_keyboard, DEFAULT_MODEL
 
 
 class TypingIndicator:
@@ -80,6 +80,7 @@ HELP_TEXT = """
 /pwd \\- Show current directory
 
 *Tools*
+/models \\- Select Claude model
 /git \\[cmd\\] \\- Git operations
 /export \\[fmt\\] \\- Export session
 /cost \\- Show usage costs
@@ -203,6 +204,17 @@ async def switch_session(
     session_id = context.args[0]
     # TODO: Load session from database
     await update.message.reply_text(f"🔄 Switching to session {session_id}...")
+
+
+async def select_model(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /models command - show model selection menu."""
+    current_model = context.user_data.get("model", DEFAULT_MODEL)
+    keyboard = build_models_keyboard(current_model)
+
+    await update.message.reply_text(
+        f"Current model: {current_model}",
+        reply_markup=keyboard
+    )
 
 
 async def show_cost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -419,8 +431,9 @@ async def _execute_claude_prompt(
     )
 
     try:
-        # Get resume mode from context if available
+        # Get resume mode and model from context if available
         resume_mode = context.user_data.get("resume_mode")
+        model = context.user_data.get("model")  # User's model preference
 
         # Pass bot and chat_id for interactive permission prompts
         async with TeleClaudeClient(
@@ -429,6 +442,7 @@ async def _execute_claude_prompt(
             bot=context.bot,
             chat_id=update.effective_chat.id,
             resume_mode=resume_mode,
+            model=model,
         ) as client:
             # Track client for cancel
             context.user_data["active_client"] = client
