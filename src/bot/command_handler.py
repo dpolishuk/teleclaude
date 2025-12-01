@@ -2,18 +2,7 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from claude_agent_sdk import (
-    AssistantMessage,
-    UserMessage,
-    TextBlock,
-    ToolUseBlock,
-    ToolResultBlock,
-    ResultMessage,
-)
-
-from src.claude import TeleClaudeClient, MessageStreamer
-from src.claude.streaming import escape_html
-from src.utils.keyboards import cancel_keyboard
+from .handlers import _execute_claude_prompt
 
 
 async def handle_claude_command(
@@ -62,68 +51,4 @@ async def handle_claude_command(
 
     # Execute command
     prompt = registry.substitute_args(cmd, inline_args)
-    await _execute_prompt(update, context, prompt)
-
-
-async def _execute_prompt(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-    prompt: str,
-) -> None:
-    """Execute a prompt and stream response."""
-    session = context.user_data.get("current_session")
-    config = context.bot_data.get("config")
-
-    # Send "thinking" message
-    thinking_msg = await update.message.reply_text(
-        "🤔 Thinking...",
-        reply_markup=cancel_keyboard(),
-    )
-
-    # Create streamer
-    streamer = MessageStreamer(
-        message=thinking_msg,
-        throttle_ms=config.streaming.edit_throttle_ms,
-        chunk_size=config.streaming.chunk_size,
-    )
-
-    try:
-        async with TeleClaudeClient(config, session) as client:
-            context.user_data["active_client"] = client
-
-            await client.query(prompt)
-
-            async for message in client.receive_response():
-                if isinstance(message, AssistantMessage):
-                    for block in message.content:
-                        if isinstance(block, TextBlock):
-                            await streamer.append_text(escape_html(block.text))
-                        elif isinstance(block, ToolUseBlock):
-                            tool_info = f"\n🔧 <b>{escape_html(block.name)}</b>\n"
-                            if block.input:
-                                for key, value in block.input.items():
-                                    str_val = str(value)
-                                    if len(str_val) > 200:
-                                        str_val = str_val[:200] + "..."
-                                    tool_info += f"   <code>{escape_html(key)}</code>: {escape_html(str_val)}\n"
-                            await streamer.append_text(tool_info)
-
-                elif isinstance(message, UserMessage):
-                    for block in message.content:
-                        if isinstance(block, ToolResultBlock):
-                            result_text = str(block.content) if block.content else "(no output)"
-                            if len(result_text) > 500:
-                                result_text = result_text[:500] + "\n... (truncated)"
-                            result_info = f"\n📄 Result:\n<pre>{escape_html(result_text)}</pre>\n"
-                            await streamer.append_text(result_info)
-
-                elif isinstance(message, ResultMessage):
-                    if message.total_cost_usd:
-                        session.total_cost_usd += message.total_cost_usd
-
-            await streamer.flush()
-
-    except Exception as e:
-        await thinking_msg.edit_text(f"❌ Error: {str(e)}")
-    finally:
-        context.user_data.pop("active_client", None)
+    await _execute_claude_prompt(update, context, prompt)

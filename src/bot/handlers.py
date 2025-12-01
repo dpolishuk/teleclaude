@@ -17,6 +17,7 @@ from src.storage.repository import SessionRepository
 from src.claude import TeleClaudeClient, MessageStreamer
 from src.claude.streaming import escape_html
 from src.utils.keyboards import project_keyboard, cancel_keyboard
+from src.commands import ClaudeCommand
 
 
 HELP_TEXT = """
@@ -277,6 +278,20 @@ async def handle_message(
         await _create_session(update, context, path)
         return
 
+    # Check if awaiting arguments for pending command
+    if context.user_data.get("pending_command"):
+        pending = context.user_data.pop("pending_command")
+        registry = context.bot_data.get("command_registry")
+        cmd = ClaudeCommand(
+            name=pending["name"],
+            description="",
+            prompt=pending["prompt"],
+            needs_args=True,
+        )
+        prompt = registry.substitute_args(cmd, update.message.text)
+        await _execute_claude_prompt(update, context, prompt)
+        return
+
     session = context.user_data.get("current_session")
 
     if not session:
@@ -286,6 +301,16 @@ async def handle_message(
         return
 
     prompt = update.message.text
+    await _execute_claude_prompt(update, context, prompt)
+
+
+async def _execute_claude_prompt(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    prompt: str,
+) -> None:
+    """Execute a prompt and stream Claude's response."""
+    session = context.user_data.get("current_session")
     config = context.bot_data.get("config")
 
     # Send "thinking" message

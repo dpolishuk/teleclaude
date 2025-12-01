@@ -267,23 +267,11 @@ async def test_handle_claude_command_no_args():
         ),
     }
 
-    with patch("src.bot.command_handler.TeleClaudeClient") as mock_client_class:
-        mock_client = AsyncMock()
-        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
-        mock_client.__aexit__ = AsyncMock()
-        mock_client.query = AsyncMock()
+    with patch("src.bot.command_handler._execute_claude_prompt") as mock_execute:
+        mock_execute.return_value = AsyncMock()
+        await handle_claude_command(mock_update, mock_context)
 
-        async def mock_receive():
-            if False:
-                yield
-
-        mock_client.receive_response = MagicMock(return_value=mock_receive())
-        mock_client_class.return_value = mock_client
-
-        with patch("src.bot.command_handler.MessageStreamer"):
-            await handle_claude_command(mock_update, mock_context)
-
-        mock_client.query.assert_called_once_with("Review this code for bugs.")
+        mock_execute.assert_called_once_with(mock_update, mock_context, "Review this code for bugs.")
 
 
 @pytest.mark.asyncio

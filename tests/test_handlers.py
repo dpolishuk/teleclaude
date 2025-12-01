@@ -170,3 +170,47 @@ async def test_refresh_commands_no_session(mock_update, mock_context):
     mock_registry.refresh.assert_called_once_with(
         mock_update.get_bot(), project_path=None
     )
+
+
+@pytest.mark.asyncio
+async def test_handle_message_pending_command(mock_update, mock_context):
+    """handle_message processes pending command args."""
+    mock_context.user_data = {
+        "current_session": MagicMock(
+            project_path="/test",
+            total_cost_usd=0.0,
+        ),
+        "pending_command": {
+            "name": "fix-bug",
+            "prompt": "Fix this bug: $ARGUMENTS",
+        },
+    }
+    mock_context.bot_data["command_registry"] = MagicMock(
+        substitute_args=MagicMock(return_value="Fix this bug: login broken"),
+    )
+
+    mock_thinking_msg = AsyncMock()
+    mock_update.message.reply_text.return_value = mock_thinking_msg
+    mock_update.message.text = "login broken"
+
+    with patch("src.bot.handlers.TeleClaudeClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
+
+        async def mock_receive():
+            if False:
+                yield
+
+        mock_client.receive_response = MagicMock(return_value=mock_receive())
+        mock_client_class.return_value = mock_client
+
+        with patch("src.bot.handlers.MessageStreamer"):
+            await handle_message(mock_update, mock_context)
+
+        # Should have used substituted prompt
+        mock_client.query.assert_called_once_with("Fix this bug: login broken")
+
+    # pending_command should be cleared
+    assert "pending_command" not in mock_context.user_data

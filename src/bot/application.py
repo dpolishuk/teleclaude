@@ -28,6 +28,7 @@ from .handlers import (
     refresh_commands,
 )
 from .callbacks import handle_callback
+from .command_handler import handle_claude_command
 
 
 def create_application(config: Config) -> Application:
@@ -66,6 +67,14 @@ def create_application(config: Config) -> Application:
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             auth_middleware(handle_message),
+        )
+    )
+
+    # Dynamic Claude command handler (catch-all for unknown commands)
+    app.add_handler(
+        MessageHandler(
+            filters.COMMAND,
+            auth_middleware(handle_claude_command),
         )
     )
 
