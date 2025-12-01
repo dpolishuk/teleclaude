@@ -480,8 +480,10 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ MCP manager not initialized.")
         return
 
-    # No args - show status
+    # No args - show status (auto-test first)
     if not context.args:
+        await update.message.reply_text("🔍 Checking MCP servers...")
+        await mcp_manager.test_all_servers()
         status_msg = mcp_manager.format_status_message()
         await update.message.reply_text(status_msg, parse_mode="HTML")
         return
@@ -489,6 +491,8 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     subcommand = context.args[0].lower()
 
     if subcommand == "list":
+        await update.message.reply_text("🔍 Checking MCP servers...")
+        await mcp_manager.test_all_servers()
         status_msg = mcp_manager.format_status_message()
         await update.message.reply_text(status_msg, parse_mode="HTML")
 
