@@ -41,6 +41,13 @@ HELP_TEXT = """
 /cost \\- Show usage costs
 /refresh \\- Rescan Claude commands
 
+*MCP Servers*
+/mcp \\- List MCP servers \\& status
+/mcp test \\- Test all server connections
+/mcp enable <name> \\- Enable a server
+/mcp disable <name> \\- Disable a server
+/mcp reload \\- Reload MCP config
+
 *Help*
 /help \\- Show this message
 
@@ -406,8 +413,108 @@ async def _create_session(
     cmd_count = await registry.refresh(update.get_bot(), project_path=project_path)
 
     display_name = project_name or project_path
+
+    # Get MCP server count
+    mcp_manager = context.bot_data.get("mcp_manager")
+    mcp_count = len(mcp_manager.config.get_enabled_servers()) if mcp_manager else 0
+
+    mcp_msg = f"\n🔌 {mcp_count} MCP server(s) enabled." if mcp_count > 0 else ""
+
     await update.message.reply_text(
         f"✅ Created new session for {display_name}\n"
-        f"📋 {cmd_count} Claude command(s) available.\n\n"
+        f"📋 {cmd_count} Claude command(s) available.{mcp_msg}\n\n"
         "Send a message to start chatting with Claude."
     )
+
+
+async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /mcp command - MCP server management."""
+    mcp_manager = context.bot_data.get("mcp_manager")
+
+    if not mcp_manager:
+        await update.message.reply_text("❌ MCP manager not initialized.")
+        return
+
+    # No args - show status
+    if not context.args:
+        status_msg = mcp_manager.format_status_message()
+        await update.message.reply_text(status_msg, parse_mode="MarkdownV2")
+        return
+
+    subcommand = context.args[0].lower()
+
+    if subcommand == "list":
+        status_msg = mcp_manager.format_status_message()
+        await update.message.reply_text(status_msg, parse_mode="MarkdownV2")
+
+    elif subcommand == "test":
+        # Test specific server or all
+        if len(context.args) > 1:
+            server_name = context.args[1]
+            await update.message.reply_text(f"🔍 Testing {server_name}...")
+            info = await mcp_manager.test_server(server_name)
+            status_icon = "🟢" if info.status.value == "online" else "🔴"
+            msg = f"{status_icon} `{info.name}`: {info.status.value}"
+            if info.error:
+                msg += f"\n└─ {info.error}"
+            await update.message.reply_text(msg, parse_mode="MarkdownV2")
+        else:
+            await update.message.reply_text("🔍 Testing all MCP servers...")
+            results = await mcp_manager.test_all_servers()
+            lines = ["*Test Results*\n"]
+            for info in results:
+                icon = "🟢" if info.status.value == "online" else "🔴" if info.status.value in ("offline", "error") else "⏸️"
+                line = f"{icon} `{info.name}`: {info.status.value}"
+                if info.error:
+                    line += f"\n   └─ {escape_html(info.error)}"
+                lines.append(line)
+            await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+
+    elif subcommand == "enable":
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /mcp enable <server_name>")
+            return
+        server_name = context.args[1]
+        if mcp_manager.enable_server(server_name):
+            await update.message.reply_text(f"✅ Enabled MCP server: `{server_name}`", parse_mode="MarkdownV2")
+        else:
+            await update.message.reply_text(f"❌ Server not found: {server_name}")
+
+    elif subcommand == "disable":
+        if len(context.args) < 2:
+            await update.message.reply_text("Usage: /mcp disable <server_name>")
+            return
+        server_name = context.args[1]
+        if mcp_manager.disable_server(server_name):
+            await update.message.reply_text(f"⏸️ Disabled MCP server: `{server_name}`", parse_mode="MarkdownV2")
+        else:
+            await update.message.reply_text(f"❌ Server not found: {server_name}")
+
+    elif subcommand == "reload":
+        count = mcp_manager.reload_config()
+        # Also update the config in bot_data
+        config = context.bot_data.get("config")
+        if config:
+            config.mcp = mcp_manager.config
+        await update.message.reply_text(f"🔄 Reloaded MCP config: {count} server(s)")
+
+    elif subcommand == "on":
+        mcp_manager.config.enabled = True
+        await update.message.reply_text("✅ MCP servers enabled globally")
+
+    elif subcommand == "off":
+        mcp_manager.config.enabled = False
+        await update.message.reply_text("⏸️ MCP servers disabled globally")
+
+    else:
+        await update.message.reply_text(
+            "Usage: /mcp [list|test|enable|disable|reload|on|off]\n\n"
+            "Examples:\n"
+            "  /mcp - Show server status\n"
+            "  /mcp test - Test all connections\n"
+            "  /mcp test perplexity-mcp - Test specific server\n"
+            "  /mcp enable context7 - Enable server\n"
+            "  /mcp disable serena - Disable server\n"
+            "  /mcp reload - Reload .mcp.json\n"
+            "  /mcp on/off - Global MCP toggle"
+        )

@@ -28,6 +28,7 @@ class CommandRegistry:
         ("git", "Git operations"),
         ("export", "Export session"),
         ("refresh", "Rescan Claude commands"),
+        ("mcp", "Manage MCP servers"),
     ]
 
     def __init__(self):

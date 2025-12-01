@@ -9,6 +9,7 @@ from telegram.ext import (
 
 from src.config.settings import Config
 from src.commands import CommandRegistry
+from src.mcp import MCPManager
 from .middleware import auth_middleware
 from .handlers import (
     start,
@@ -26,6 +27,7 @@ from .handlers import (
     export_session,
     handle_message,
     refresh_commands,
+    mcp_cmd,
 )
 from .callbacks import handle_callback
 from .command_handler import handle_claude_command
@@ -33,11 +35,21 @@ from .command_handler import handle_claude_command
 
 async def post_init(application: Application) -> None:
     """Initialize commands after bot is ready."""
-    registry = application.bot_data["command_registry"]
-    # Load plugin/personal commands at startup (no project context yet)
-    count = await registry.refresh(application.bot, project_path=None)
     import logging
-    logging.getLogger(__name__).info(f"Loaded {count} Claude commands at startup")
+    logger = logging.getLogger(__name__)
+
+    # Initialize command registry
+    registry = application.bot_data["command_registry"]
+    count = await registry.refresh(application.bot, project_path=None)
+    logger.info(f"Loaded {count} Claude commands at startup")
+
+    # Initialize MCP manager
+    config = application.bot_data["config"]
+    mcp_manager = MCPManager(config.mcp)
+    application.bot_data["mcp_manager"] = mcp_manager
+
+    enabled_count = len(mcp_manager.config.get_enabled_servers())
+    logger.info(f"MCP manager initialized: {len(mcp_manager.list_servers())} servers, {enabled_count} enabled")
 
 
 def create_application(config: Config) -> Application:
@@ -66,6 +78,7 @@ def create_application(config: Config) -> Application:
         ("git", git),
         ("export", export_session),
         ("refresh", refresh_commands),
+        ("mcp", mcp_cmd),
     ]
 
     for command, handler in commands:

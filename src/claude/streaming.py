@@ -1,6 +1,7 @@
-"""Streaming responses to Telegram with throttling."""
+"""Streaming responses to Telegram with throttling and HTML tag balancing."""
 import asyncio
 import html
+import re
 import time
 from typing import Optional
 
@@ -13,11 +14,132 @@ def escape_html(text: str) -> str:
     return html.escape(text)
 
 
+# Supported HTML tags for Telegram
+SUPPORTED_TAGS = {"b", "strong", "i", "em", "u", "ins", "s", "strike", "del",
+                  "code", "pre", "a", "tg-spoiler", "blockquote"}
+
+# Self-closing or void tags (don't need balancing)
+VOID_TAGS = set()  # Telegram HTML doesn't use void tags
+
+# Regex patterns for HTML tag detection
+OPEN_TAG_PATTERN = re.compile(r"<(\w+)(?:\s[^>]*)?>")
+CLOSE_TAG_PATTERN = re.compile(r"</(\w+)>")
+
+
+def find_open_tags(text: str) -> list[str]:
+    """Find all unclosed HTML tags in text.
+
+    Returns list of tag names that are opened but not closed,
+    in the order they were opened (for proper nesting).
+    """
+    tag_stack = []
+
+    # Find all tags in order
+    tag_pattern = re.compile(r"<(/?)(\w+)(?:\s[^>]*)?>")
+
+    for match in tag_pattern.finditer(text):
+        is_closing = match.group(1) == "/"
+        tag_name = match.group(2).lower()
+
+        # Only track supported tags
+        if tag_name not in SUPPORTED_TAGS:
+            continue
+
+        if is_closing:
+            # Remove matching open tag from stack
+            if tag_stack and tag_stack[-1] == tag_name:
+                tag_stack.pop()
+            # Handle mismatched tags - find and remove if exists
+            elif tag_name in tag_stack:
+                tag_stack.remove(tag_name)
+        else:
+            tag_stack.append(tag_name)
+
+    return tag_stack
+
+
+def balance_html(text: str) -> str:
+    """Balance HTML tags by closing any unclosed tags at the end.
+
+    Args:
+        text: HTML text that may have unclosed tags.
+
+    Returns:
+        Text with all tags properly closed.
+    """
+    open_tags = find_open_tags(text)
+
+    if not open_tags:
+        return text
+
+    # Close tags in reverse order (LIFO for proper nesting)
+    closing_tags = "".join(f"</{tag}>" for tag in reversed(open_tags))
+    return text + closing_tags
+
+
+def safe_truncate_html(text: str, max_length: int, prefix: str = "") -> str:
+    """Truncate HTML text safely without breaking tags.
+
+    Args:
+        text: HTML text to truncate.
+        max_length: Maximum length including prefix.
+        prefix: Text to prepend (e.g., "[...truncated...]").
+
+    Returns:
+        Truncated and balanced HTML.
+    """
+    if len(text) <= max_length:
+        return text
+
+    # Reserve space for prefix and tag overhead
+    tag_buffer = 60  # Space for opening + closing tags
+    available = max_length - len(prefix) - tag_buffer
+
+    # Ensure we have at least some content
+    if available < 50:
+        available = max_length - len(prefix) - 20
+
+    # Take from the end for streaming (show latest content)
+    truncate_point = max(0, len(text) - available)
+    truncated = text[truncate_point:]
+
+    # Find a safe break point (not in middle of a tag)
+    # Look for start of incomplete tag at beginning
+    first_gt = truncated.find(">")
+    first_lt = truncated.find("<")
+
+    if first_lt != -1 and (first_gt == -1 or first_gt < first_lt):
+        # We might be starting mid-tag, skip to after first complete tag
+        if first_gt != -1:
+            truncated = truncated[first_gt + 1:]
+
+    # Find what tags were open at the truncation point
+    # by analyzing the text before truncation
+    if truncate_point > 0:
+        prefix_text = text[:truncate_point]
+        open_at_truncation = find_open_tags(prefix_text)
+
+        # Add opening tags that were open before truncation
+        if open_at_truncation:
+            opening_tags = "".join(f"<{tag}>" for tag in open_at_truncation)
+            truncated = opening_tags + truncated
+
+    # Balance any unclosed tags in the truncated text
+    balanced = balance_html(truncated)
+
+    return f"{prefix}{balanced}" if prefix else balanced
+
+
 class MessageStreamer:
     """Streams Claude responses to a Telegram message with throttling.
 
     Accumulates text and periodically updates the Telegram message,
     respecting rate limits and handling message size limits.
+
+    Features:
+    - HTML tag balancing to prevent parse errors
+    - Graceful fallback to plain text on errors
+    - Rate-limited updates
     """
 
     def __init__(
@@ -43,6 +165,7 @@ class MessageStreamer:
         self._last_edit_time: float = 0
         self._pending_flush: bool = False
         self._lock = asyncio.Lock()
+        self._fallback_to_plain: bool = False  # If HTML fails repeatedly, stay plain
 
     async def append_text(self, text: str) -> None:
         """Append text and schedule flush if throttle allows.
@@ -83,8 +206,11 @@ class MessageStreamer:
 
         display_text = self._get_display_text()
 
+        # Determine parse mode (may fallback to None)
+        current_parse_mode = None if self._fallback_to_plain else self.parse_mode
+
         try:
-            await self.message.edit_text(display_text, parse_mode=self.parse_mode)
+            await self.message.edit_text(display_text, parse_mode=current_parse_mode)
             self._last_edit_time = time.time() * 1000
             self._pending_flush = False
         except BadRequest as e:
@@ -93,10 +219,13 @@ class MessageStreamer:
             if "not modified" in error_msg:
                 self._pending_flush = False
                 return
-            # HTML parsing error - retry without parse_mode
+            # HTML parsing error - fallback to plain text
             if "parse entities" in error_msg or "can't parse" in error_msg:
+                self._fallback_to_plain = True
                 try:
-                    await self.message.edit_text(display_text, parse_mode=None)
+                    # Strip HTML tags for plain text display
+                    plain_text = re.sub(r"<[^>]+>", "", display_text)
+                    await self.message.edit_text(plain_text, parse_mode=None)
                     self._last_edit_time = time.time() * 1000
                     self._pending_flush = False
                 except Exception:
@@ -108,13 +237,26 @@ class MessageStreamer:
             pass
 
     def _get_display_text(self) -> str:
-        """Get text for display, truncated if needed."""
-        if len(self.current_text) <= self.chunk_size:
-            return self.current_text
+        """Get text for display, truncated and balanced if needed."""
+        text = self.current_text
 
-        # Truncate with indicator
-        truncated = self.current_text[-(self.chunk_size - 20):]
-        return f"[...truncated...]\n{truncated}"
+        # If using HTML parse mode and not in fallback, balance tags
+        if self.parse_mode == "HTML" and not self._fallback_to_plain:
+            if len(text) <= self.chunk_size:
+                return balance_html(text)
+            else:
+                return safe_truncate_html(
+                    text,
+                    self.chunk_size,
+                    prefix="[...]\n"
+                )
+        else:
+            # Plain text or other modes
+            if len(text) <= self.chunk_size:
+                return text
+            # Simple truncation for non-HTML
+            truncated = text[-(self.chunk_size - 10):]
+            return f"[...]\n{truncated}"
 
     async def flush(self) -> None:
         """Force flush current content to Telegram."""
@@ -130,6 +272,8 @@ class MessageStreamer:
         async with self._lock:
             if final_text is not None:
                 self.current_text = final_text
+            # On final flush, try HTML one more time even if we fell back
+            self._fallback_to_plain = False
             await self._do_flush()
 
     async def set_text(self, text: str) -> None:
