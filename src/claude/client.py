@@ -52,8 +52,9 @@ def create_claude_options(
         if not mcp_servers:
             mcp_servers = None
 
+    # Don't restrict allowed_tools - let SDK handle permissions via permission_mode
+    # MCP tools are dynamically registered and would be blocked by a whitelist
     options = ClaudeAgentOptions(
-        allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
         permission_mode=config.claude.permission_mode,
         max_turns=config.claude.max_turns,
         max_budget_usd=config.claude.max_budget_usd,
