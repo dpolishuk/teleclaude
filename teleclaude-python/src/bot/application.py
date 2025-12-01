@@ -63,7 +63,7 @@ def create_application(config: Config) -> Application:
         )
     )
 
-    # Callback handler for inline keyboards
-    app.add_handler(CallbackQueryHandler(handle_callback))
+    # Callback handler for inline keyboards (with auth)
+    app.add_handler(CallbackQueryHandler(auth_middleware(handle_callback)))
 
     return app
