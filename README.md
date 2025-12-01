@@ -62,56 +62,7 @@ flowchart TB
 
 ### Deep Dive
 
-```mermaid
-mindmap
-  root((TeleClaude))
-    Bot Interface
-      Application
-        Startup
-        Shutdown
-      Handlers
-        Message
-        Command
-        Callback
-      Middleware
-        Auth
-        Logging
-      Keyboards
-        Inline
-        Reply
-    Claude Core
-      Client
-        PTY Management
-      Session Manager
-        State
-        Routing
-      Streaming
-        NDJSON
-        Buffering
-      Formatting
-        ANSI
-        Annotations
-    MCP System
-      Manager
-        Lifecycle
-      Registry
-        Discovery
-      Client
-        Transport
-    Storage
-      Database
-        SQLite
-        SQLAlchemy
-      Repositories
-        Session
-        User
-      Config
-        YAML
-        Env
-    Utils
-      HTML Parsing
-      Security
-```
+![TeleClaude Deep Dive Architecture](assets/architecture_mindmap.png)
 
 ## Message Flow
 
