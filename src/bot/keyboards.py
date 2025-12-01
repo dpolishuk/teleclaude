@@ -96,6 +96,44 @@ def build_session_keyboard(sessions: list[SessionInfo]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
+def build_sessions_list_keyboard(sessions: list[SessionInfo]) -> InlineKeyboardMarkup:
+    """Build session list keyboard with time + preview for /sessions command.
+
+    Args:
+        sessions: List of SessionInfo objects from scan_sessions()
+
+    Returns:
+        InlineKeyboardMarkup with one button per session showing "time: preview".
+        Callback data pattern: select_session:<session_id>
+    """
+    buttons = []
+
+    for session in sessions:
+        relative = _format_relative_time(session.mtime)
+        preview = session.preview
+
+        # Build display text: "2h ago: fix session..."
+        if preview:
+            # Truncate preview to fit with time
+            max_preview = TELEGRAM_BUTTON_TEXT_LIMIT - len(relative) - 4  # ": " + buffer
+            if len(preview) > max_preview:
+                preview = preview[:max_preview - 1] + "…"
+            display_text = f"{relative}: \"{preview}\""
+        else:
+            display_text = f"{relative}: (empty)"
+
+        if len(display_text) > TELEGRAM_BUTTON_TEXT_LIMIT:
+            display_text = display_text[:61] + "..."
+
+        button = InlineKeyboardButton(
+            text=display_text,
+            callback_data=f"select_session:{session.session_id}",
+        )
+        buttons.append([button])
+
+    return InlineKeyboardMarkup(buttons)
+
+
 def build_mode_keyboard(session_id: str) -> InlineKeyboardMarkup:
     """Build Fork/Continue mode selection keyboard.
 

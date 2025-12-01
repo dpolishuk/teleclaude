@@ -45,6 +45,8 @@ async def handle_callback(
         "resume_project": _handle_resume_project,
         "resume_session": _handle_resume_session,
         "resume_mode": _handle_resume_mode,
+        # /sessions command callback
+        "select_session": _handle_select_session,
     }
 
     handler = handlers.get(action)
@@ -345,5 +347,38 @@ async def _handle_resume_mode(
     await query.edit_message_text(
         f"✅ Session resumed! ({mode_text})\n\n"
         f"📂 Project: {project_path}\n\n"
+        "You can now continue chatting with Claude."
+    )
+
+
+async def _handle_select_session(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle session selection from /sessions command - resume immediately."""
+    query = update.callback_query
+
+    if not value:
+        await query.edit_message_text("❌ Invalid session selection.")
+        return
+
+    # Get current session to know project path
+    current_session = context.user_data.get("current_session")
+    if not current_session:
+        await query.edit_message_text("❌ No active project. Use /new first.")
+        return
+
+    # Update current session with the selected Claude session_id
+    current_session.claude_session_id = value
+
+    # Persist to database
+    async with get_session() as db:
+        repo = SessionRepository(db)
+        await repo.set_claude_session_id(current_session.id, value)
+
+    logger.info(f"Session selected: {value[:20]}... for project {current_session.project_path}")
+
+    await query.edit_message_text(
+        f"✅ Session resumed!\n\n"
+        f"📂 Project: {current_session.project_path}\n\n"
         "You can now continue chatting with Claude."
     )

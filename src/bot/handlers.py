@@ -21,7 +21,7 @@ from src.claude.formatting import format_tool_call, format_tool_result, format_s
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
 from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time
-from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard
+from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard, build_sessions_list_keyboard
 
 
 class TypingIndicator:
@@ -182,17 +182,12 @@ async def list_sessions(
         )
         return
 
-    # Build text list
-    lines = [f"Sessions for {project_path}:\n"]
-    for s in sessions:
-        time_str = relative_time(s.mtime)
-        preview = s.preview[:40] + "…" if len(s.preview) > 40 else s.preview
-        if preview:
-            lines.append(f"• {time_str}: \"{preview}\"")
-        else:
-            lines.append(f"• {time_str}: (empty)")
-
-    await update.message.reply_text("\n".join(lines))
+    # Build keyboard with session buttons
+    keyboard = build_sessions_list_keyboard(sessions)
+    await update.message.reply_text(
+        f"Sessions for {project_path}:",
+        reply_markup=keyboard
+    )
 
 
 async def switch_session(
