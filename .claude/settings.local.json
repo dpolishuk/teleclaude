@@ -52,7 +52,8 @@
       "Bash(./venv/bin/python -m pytest tests/ -v)",
       "Bash(./venv/bin/python -m pytest:*)",
       "Bash(./venv/bin/pip install:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mv:*)"
     ]
   },
   "enabledMcpjsonServers": [
