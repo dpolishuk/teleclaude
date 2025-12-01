@@ -17,6 +17,7 @@ from .handlers import (
     handle_message,
 )
 from .callbacks import handle_callback, parse_callback_data
+from .application import create_application
 
 __all__ = [
     "auth_middleware",
@@ -36,4 +37,5 @@ __all__ = [
     "handle_message",
     "handle_callback",
     "parse_callback_data",
+    "create_application",
 ]
