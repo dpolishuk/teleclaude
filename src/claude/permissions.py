@@ -72,9 +72,11 @@ class PermissionManager:
         This is called by the SDK's can_use_tool callback.
         Shows Telegram buttons and waits for user response.
         """
+        logger.info(f"Permission requested for tool: {tool_name}")
+
         # Check always-allowed list first
         if tool_name in self._always_allowed:
-            logger.debug(f"Tool {tool_name} is always allowed")
+            logger.info(f"Tool {tool_name} is always allowed - auto-approving")
             return PermissionResultAllow()
 
         # Generate unique request ID
@@ -88,6 +90,7 @@ class PermissionManager:
             context=context,
         )
         self._pending[request_id] = pending
+        logger.info(f"Created pending permission: {request_id} for {tool_name}")
 
         # Show permission prompt in Telegram
         if self._bot and self._chat_id:
@@ -175,25 +178,33 @@ class PermissionManager:
         Returns:
             Tuple of (success, message).
         """
+        logger.info(
+            f"handle_permission_response: request_id={request_id}, action={action}, "
+            f"pending_count={len(self._pending)}, pending_ids={list(self._pending.keys())}"
+        )
         pending = self._pending.get(request_id)
         if not pending:
+            logger.warning(f"Permission request {request_id} not found in pending dict")
             return False, "Permission request not found or expired"
 
         if action == "allow":
             pending.result = PermissionResultAllow()
             pending.always_allow = False
             pending.event.set()
+            logger.info(f"Set event for {request_id} - allow")
             return True, f"✅ Allowed: {pending.tool_name}"
 
         elif action == "always":
             pending.result = PermissionResultAllow()
             pending.always_allow = True
             pending.event.set()
+            logger.info(f"Set event for {request_id} - always")
             return True, f"✅ Always allowed: {pending.tool_name}"
 
         elif action == "deny":
             pending.result = PermissionResultDeny(message="User denied permission")
             pending.event.set()
+            logger.info(f"Set event for {request_id} - deny")
             return True, f"❌ Denied: {pending.tool_name}"
 
         return False, f"Unknown action: {action}"

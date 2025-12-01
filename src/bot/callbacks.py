@@ -1,10 +1,14 @@
 """Telegram callback query handlers."""
+import logging
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude.permissions import get_permission_manager
+
+logger = logging.getLogger(__name__)
 
 
 def parse_callback_data(data: str) -> tuple[str, str | None]:
@@ -164,8 +168,11 @@ async def _handle_permission_allow(
     query = update.callback_query
     manager = get_permission_manager()
 
+    logger.info(f"Permission allow callback: request_id={value}")
+
     if value:
         success, message = manager.handle_permission_response(value, "allow")
+        logger.info(f"Permission response: success={success}, message={message}")
         await query.edit_message_text(message)
     else:
         await query.edit_message_text("❌ Invalid permission request.")
@@ -178,8 +185,11 @@ async def _handle_permission_always(
     query = update.callback_query
     manager = get_permission_manager()
 
+    logger.info(f"Permission always callback: request_id={value}")
+
     if value:
         success, message = manager.handle_permission_response(value, "always")
+        logger.info(f"Permission response: success={success}, message={message}")
         await query.edit_message_text(message)
     else:
         await query.edit_message_text("❌ Invalid permission request.")
@@ -192,8 +202,11 @@ async def _handle_permission_deny(
     query = update.callback_query
     manager = get_permission_manager()
 
+    logger.info(f"Permission deny callback: request_id={value}")
+
     if value:
         success, message = manager.handle_permission_response(value, "deny")
+        logger.info(f"Permission response: success={success}, message={message}")
         await query.edit_message_text(message)
     else:
         await query.edit_message_text("❌ Invalid permission request.")

@@ -6,12 +6,11 @@ from telegram import Bot
 from claude_agent_sdk import (
     ClaudeSDKClient,
     ClaudeAgentOptions,
-    HookMatcher,
 )
 
 from src.config.settings import Config
 from src.storage.models import Session
-from src.claude.hooks import check_dangerous_command
+from src.claude.hooks import create_approval_hooks
 from src.claude.permissions import can_use_tool_callback, get_permission_manager
 
 
@@ -37,13 +36,9 @@ def create_claude_options(
     Returns:
         Configured ClaudeAgentOptions.
     """
-    # Build hooks with HookMatcher format
+    # Build hooks with HookMatcher format (includes Bash dangerous patterns + MCP approval)
     if hooks is None:
-        hooks = {
-            "PreToolUse": [
-                HookMatcher(matcher="Bash", hooks=[check_dangerous_command]),
-            ],
-        }
+        hooks = create_approval_hooks()
 
     # Determine working directory
     if session:

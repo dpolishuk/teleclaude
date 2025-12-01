@@ -1,7 +1,10 @@
 """Claude SDK hooks for approval workflow."""
+import logging
 from typing import Any, Callable
 
 from claude_agent_sdk import HookMatcher
+
+logger = logging.getLogger(__name__)
 
 # Default patterns that require user approval (must be lowercase)
 DANGEROUS_PATTERNS: list[str] = [
@@ -121,6 +124,31 @@ def create_dangerous_command_hook(
     return hook
 
 
+async def check_mcp_tool(
+    input_data: dict[str, Any],
+    tool_use_id: str | None,
+    context: dict[str, Any],
+) -> dict[str, Any]:
+    """PreToolUse hook to intercept MCP tool calls for approval.
+
+    Returns 'ask' decision to trigger can_use_tool callback for all MCP tools.
+    """
+    tool_name = input_data.get("tool_name", "")
+
+    # MCP tools follow naming convention: mcp__server__tool
+    if tool_name.startswith("mcp__"):
+        logger.info(f"MCP tool detected: {tool_name}, requesting approval")
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "ask",
+                "permissionDecisionReason": f"MCP tool requires approval: {tool_name}",
+            }
+        }
+
+    return {}
+
+
 def create_approval_hooks(dangerous_commands: list[str] | None = None) -> dict:
     """Create hooks dict for ClaudeAgentOptions.
 
@@ -133,13 +161,15 @@ def create_approval_hooks(dangerous_commands: list[str] | None = None) -> dict:
         A dict with HookMatcher format suitable for ClaudeAgentOptions.
     """
     if dangerous_commands is None:
-        hook = check_dangerous_command
+        bash_hook = check_dangerous_command
     else:
         combined_patterns = list(DANGEROUS_PATTERNS) + dangerous_commands
-        hook = create_dangerous_command_hook(combined_patterns)
+        bash_hook = create_dangerous_command_hook(combined_patterns)
 
     return {
         "PreToolUse": [
-            HookMatcher(matcher="Bash", hooks=[hook]),
+            HookMatcher(matcher="Bash", hooks=[bash_hook]),
+            # Match all MCP tools (mcp__*)
+            HookMatcher(matcher="mcp__*", hooks=[check_mcp_tool]),
         ],
     }
