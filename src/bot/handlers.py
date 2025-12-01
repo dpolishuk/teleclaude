@@ -64,39 +64,39 @@ class TypingIndicator:
 
 
 HELP_TEXT = """
-📱 *TeleClaude Commands*
+<b>TeleClaude Commands</b>
 
-*Session Management*
-/new \\[project\\] \\- Start new session
-/continue \\- Resume last session
-/resume \\- Resume Claude Code session
-/sessions \\- List all sessions
-/switch <id> \\- Switch to session
-/cancel \\- Stop current operation
+<b>Session Management</b>
+/new [project] - Start new session
+/continue - Resume last session
+/resume - Resume Claude Code session
+/sessions - List all sessions
+/switch &lt;id&gt; - Switch to session
+/cancel - Stop current operation
 
-*Navigation*
-/cd <path> \\- Change directory
-/ls \\[path\\] \\- List directory
-/pwd \\- Show current directory
+<b>Navigation</b>
+/cd &lt;path&gt; - Change directory
+/ls [path] - List directory
+/pwd - Show current directory
 
-*Tools*
-/models \\- Select Claude model
-/git \\[cmd\\] \\- Git operations
-/export \\[fmt\\] \\- Export session
-/cost \\- Show usage costs
-/refresh \\- Rescan Claude commands
+<b>Tools</b>
+/models - Select Claude model
+/git [cmd] - Git operations
+/export [fmt] - Export session
+/cost - Show usage costs
+/refresh - Rescan Claude commands
 
-*MCP Servers*
-/mcp \\- List MCP servers \\& status
-/mcp test \\- Test all server connections
-/mcp enable <name> \\- Enable a server
-/mcp disable <name> \\- Disable a server
-/mcp reload \\- Reload MCP config
+<b>MCP Servers</b>
+/mcp - List MCP servers &amp; status
+/mcp test - Test all server connections
+/mcp enable &lt;name&gt; - Enable a server
+/mcp disable &lt;name&gt; - Disable a server
+/mcp reload - Reload MCP config
 
-*Help*
-/help \\- Show this message
+<b>Help</b>
+/help - Show this message
 
-💡 Claude commands from \\.claude/commands/ appear in the / menu\\!
+Claude commands from <code>.claude/commands/</code> appear in the / menu!
 """
 
 
@@ -112,7 +112,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /help command."""
-    await update.message.reply_text(HELP_TEXT, parse_mode="MarkdownV2")
+    await update.message.reply_text(HELP_TEXT, parse_mode="HTML")
 
 
 async def new_session(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -223,14 +223,14 @@ async def show_cost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if session:
         await update.message.reply_text(
-            f"💰 *Session Cost*\n\n"
+            f"<b>Session Cost</b>\n\n"
             f"Current session: ${session.total_cost_usd:.4f}",
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
         )
     else:
         await update.message.reply_text(
-            "💰 *Usage Cost*\n\nNo active session\\.",
-            parse_mode="MarkdownV2",
+            "<b>Usage Cost</b>\n\nNo active session.",
+            parse_mode="HTML",
         )
 
 
@@ -269,7 +269,7 @@ async def cd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     new_path = context.args[0]
     # TODO: Validate path with sandbox
     session.current_directory = new_path
-    await update.message.reply_text(f"📂 Changed to: `{new_path}`", parse_mode="MarkdownV2")
+    await update.message.reply_text(f"Changed to: <code>{new_path}</code>", parse_mode="HTML")
 
 
 async def ls(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -282,7 +282,7 @@ async def ls(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     path = context.args[0] if context.args else session.current_directory
     # TODO: List directory contents
-    await update.message.reply_text(f"📁 Contents of `{path}`:\n\n(not implemented)", parse_mode="MarkdownV2")
+    await update.message.reply_text(f"Contents of <code>{path}</code>:\n\n(not implemented)", parse_mode="HTML")
 
 
 async def pwd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -294,8 +294,8 @@ async def pwd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     await update.message.reply_text(
-        f"📂 Current directory: `{session.current_directory}`",
-        parse_mode="MarkdownV2",
+        f"Current directory: <code>{session.current_directory}</code>",
+        parse_mode="HTML",
     )
 
 

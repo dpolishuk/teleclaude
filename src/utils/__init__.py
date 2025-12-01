@@ -1,5 +1,19 @@
 """Utilities module."""
-from .formatting import escape_markdown, format_tool_use, chunk_text, truncate_text
+from .html import (
+    escape,
+    balance_tags,
+    safe_html,
+    bold,
+    italic,
+    code,
+    pre,
+    link,
+    underline,
+    strike,
+    spoiler,
+    chunk_text,
+    truncate,
+)
 from .keyboards import (
     project_keyboard,
     session_keyboard,
@@ -9,10 +23,21 @@ from .keyboards import (
 )
 
 __all__ = [
-    "escape_markdown",
-    "format_tool_use",
+    # HTML utilities
+    "escape",
+    "balance_tags",
+    "safe_html",
+    "bold",
+    "italic",
+    "code",
+    "pre",
+    "link",
+    "underline",
+    "strike",
+    "spoiler",
     "chunk_text",
-    "truncate_text",
+    "truncate",
+    # Keyboards
     "project_keyboard",
     "session_keyboard",
     "approval_keyboard",

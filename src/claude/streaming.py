@@ -1,6 +1,5 @@
 """Streaming responses to Telegram with throttling and HTML tag balancing."""
 import asyncio
-import html
 import re
 import time
 from typing import Optional
@@ -8,73 +7,11 @@ from typing import Optional
 from telegram import Message
 from telegram.error import BadRequest, TimedOut
 
+from src.utils.html import escape, balance_tags, find_open_tags
 
-def escape_html(text: str) -> str:
-    """Escape HTML special characters for Telegram."""
-    return html.escape(text)
-
-
-# Supported HTML tags for Telegram
-SUPPORTED_TAGS = {"b", "strong", "i", "em", "u", "ins", "s", "strike", "del",
-                  "code", "pre", "a", "tg-spoiler", "blockquote"}
-
-# Self-closing or void tags (don't need balancing)
-VOID_TAGS = set()  # Telegram HTML doesn't use void tags
-
-# Regex patterns for HTML tag detection
-OPEN_TAG_PATTERN = re.compile(r"<(\w+)(?:\s[^>]*)?>")
-CLOSE_TAG_PATTERN = re.compile(r"</(\w+)>")
-
-
-def find_open_tags(text: str) -> list[str]:
-    """Find all unclosed HTML tags in text.
-
-    Returns list of tag names that are opened but not closed,
-    in the order they were opened (for proper nesting).
-    """
-    tag_stack = []
-
-    # Find all tags in order
-    tag_pattern = re.compile(r"<(/?)(\w+)(?:\s[^>]*)?>")
-
-    for match in tag_pattern.finditer(text):
-        is_closing = match.group(1) == "/"
-        tag_name = match.group(2).lower()
-
-        # Only track supported tags
-        if tag_name not in SUPPORTED_TAGS:
-            continue
-
-        if is_closing:
-            # Remove matching open tag from stack
-            if tag_stack and tag_stack[-1] == tag_name:
-                tag_stack.pop()
-            # Handle mismatched tags - find and remove if exists
-            elif tag_name in tag_stack:
-                tag_stack.remove(tag_name)
-        else:
-            tag_stack.append(tag_name)
-
-    return tag_stack
-
-
-def balance_html(text: str) -> str:
-    """Balance HTML tags by closing any unclosed tags at the end.
-
-    Args:
-        text: HTML text that may have unclosed tags.
-
-    Returns:
-        Text with all tags properly closed.
-    """
-    open_tags = find_open_tags(text)
-
-    if not open_tags:
-        return text
-
-    # Close tags in reverse order (LIFO for proper nesting)
-    closing_tags = "".join(f"</{tag}>" for tag in reversed(open_tags))
-    return text + closing_tags
+# Re-export for backwards compatibility
+escape_html = escape
+balance_html = balance_tags
 
 
 def safe_truncate_html(text: str, max_length: int, prefix: str = "") -> str:
@@ -155,7 +92,7 @@ class MessageStreamer:
             message: Telegram message to edit with updates.
             throttle_ms: Minimum milliseconds between message edits.
             chunk_size: Maximum characters to display (Telegram limit ~4096).
-            parse_mode: Telegram parse mode (HTML, MarkdownV2, or None).
+            parse_mode: Telegram parse mode (HTML or None).
         """
         self.message = message
         self.throttle_ms = throttle_ms
