@@ -68,9 +68,13 @@ class MessageStreamer:
     async def _delayed_flush(self) -> None:
         """Flush after throttle period expires."""
         await asyncio.sleep(self.throttle_ms / 1000)
-        async with self._lock:
-            if self._pending_flush:
-                await self._do_flush()
+        try:
+            async with self._lock:
+                if self._pending_flush:
+                    await self._do_flush()
+        except Exception:
+            # Silently ignore flush errors - next flush will retry
+            pass
 
     async def _do_flush(self) -> None:
         """Actually send the edit to Telegram."""
@@ -84,8 +88,20 @@ class MessageStreamer:
             self._last_edit_time = time.time() * 1000
             self._pending_flush = False
         except BadRequest as e:
-            # Message content unchanged or other Telegram error
-            if "not modified" not in str(e).lower():
+            error_msg = str(e).lower()
+            # Message content unchanged - ignore
+            if "not modified" in error_msg:
+                self._pending_flush = False
+                return
+            # HTML parsing error - retry without parse_mode
+            if "parse entities" in error_msg or "can't parse" in error_msg:
+                try:
+                    await self.message.edit_text(display_text, parse_mode=None)
+                    self._last_edit_time = time.time() * 1000
+                    self._pending_flush = False
+                except Exception:
+                    pass  # Give up, will retry on next flush
+            else:
                 raise
         except TimedOut:
             # Telegram timeout, will retry on next flush
