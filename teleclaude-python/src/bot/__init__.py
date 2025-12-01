@@ -16,6 +16,7 @@ from .handlers import (
     export_session,
     handle_message,
 )
+from .callbacks import handle_callback, parse_callback_data
 
 __all__ = [
     "auth_middleware",
@@ -33,4 +34,6 @@ __all__ = [
     "git",
     "export_session",
     "handle_message",
+    "handle_callback",
+    "parse_callback_data",
 ]
