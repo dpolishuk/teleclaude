@@ -164,3 +164,68 @@ def test_scan_commands_merges_both(tmp_path, monkeypatch):
     assert len(commands) == 2
     names = {c.name for c in commands}
     assert names == {"personal-cmd", "project-cmd"}
+
+
+# Task 4: CommandRegistry tests
+from src.commands.registry import CommandRegistry
+
+
+def test_registry_get_command():
+    """Registry returns command by name."""
+    registry = CommandRegistry()
+    cmd = ClaudeCommand(name="test", description="Test", prompt="Test prompt")
+    registry._commands = {"test": cmd}
+
+    result = registry.get("test")
+
+    assert result == cmd
+
+
+def test_registry_get_unknown_returns_none():
+    """Registry returns None for unknown command."""
+    registry = CommandRegistry()
+
+    result = registry.get("unknown")
+
+    assert result is None
+
+
+def test_registry_substitute_args_simple():
+    """Substitutes $ARGUMENTS in prompt."""
+    registry = CommandRegistry()
+    cmd = ClaudeCommand(
+        name="fix",
+        description="Fix bug",
+        prompt="Fix this bug: $ARGUMENTS",
+        needs_args=True,
+    )
+
+    result = registry.substitute_args(cmd, "login is broken")
+
+    assert result == "Fix this bug: login is broken"
+
+
+def test_registry_substitute_args_positional():
+    """Substitutes $1, $2 in prompt."""
+    registry = CommandRegistry()
+    cmd = ClaudeCommand(
+        name="rename",
+        description="Rename",
+        prompt="Rename $1 to $2",
+        needs_args=True,
+    )
+
+    result = registry.substitute_args(cmd, "old_name new_name")
+
+    assert result == "Rename old_name to new_name"
+
+
+def test_registry_builtin_commands():
+    """Registry provides list of built-in command names."""
+    registry = CommandRegistry()
+
+    builtins = registry.builtin_names
+
+    assert "new" in builtins
+    assert "help" in builtins
+    assert "cancel" in builtins
