@@ -66,7 +66,8 @@
       "Bash(kill:*)",
       "Bash(git show:*)",
       "Bash(find:*)",
-      "Bash(killall:*)"
+      "Bash(killall:*)",
+      "Bash(python -c \"from src.claude.permissions import get_permission_manager, can_use_tool_callback; from src.claude.client import TeleClaudeClient; from src.bot.callbacks import handle_callback; print(''Imports OK'')\")"
     ]
   },
   "enabledMcpjsonServers": [

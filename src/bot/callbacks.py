@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 
 from src.storage.database import get_session
 from src.storage.repository import SessionRepository
+from src.claude.permissions import get_permission_manager
 
 
 def parse_callback_data(data: str) -> tuple[str, str | None]:
@@ -30,6 +31,10 @@ async def handle_callback(
         "approve": _handle_approve,
         "deny": _handle_deny,
         "confirm": _handle_confirm,
+        # Permission callbacks
+        "perm_allow": _handle_permission_allow,
+        "perm_always": _handle_permission_always,
+        "perm_deny": _handle_permission_deny,
     }
 
     handler = handlers.get(action)
@@ -150,3 +155,45 @@ async def _handle_confirm(
         await query.edit_message_text(f"✅ Confirmed: {value}")
     else:
         await query.edit_message_text("❌ Invalid confirmation.")
+
+
+async def _handle_permission_allow(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle permission allow callback."""
+    query = update.callback_query
+    manager = get_permission_manager()
+
+    if value:
+        success, message = manager.handle_permission_response(value, "allow")
+        await query.edit_message_text(message)
+    else:
+        await query.edit_message_text("❌ Invalid permission request.")
+
+
+async def _handle_permission_always(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle permission always-allow callback."""
+    query = update.callback_query
+    manager = get_permission_manager()
+
+    if value:
+        success, message = manager.handle_permission_response(value, "always")
+        await query.edit_message_text(message)
+    else:
+        await query.edit_message_text("❌ Invalid permission request.")
+
+
+async def _handle_permission_deny(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle permission deny callback."""
+    query = update.callback_query
+    manager = get_permission_manager()
+
+    if value:
+        success, message = manager.handle_permission_response(value, "deny")
+        await query.edit_message_text(message)
+    else:
+        await query.edit_message_text("❌ Invalid permission request.")

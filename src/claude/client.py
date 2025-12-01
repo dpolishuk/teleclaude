@@ -1,6 +1,8 @@
 """Claude SDK client wrapper."""
 from typing import Any, Optional
 
+from telegram import Bot
+
 from claude_agent_sdk import (
     ClaudeSDKClient,
     ClaudeAgentOptions,
@@ -10,6 +12,7 @@ from claude_agent_sdk import (
 from src.config.settings import Config
 from src.storage.models import Session
 from src.claude.hooks import check_dangerous_command
+from src.claude.permissions import can_use_tool_callback, get_permission_manager
 
 
 def create_claude_options(
@@ -17,6 +20,8 @@ def create_claude_options(
     session: Session | None = None,
     hooks: dict | None = None,
     mcp_servers: dict[str, dict[str, Any]] | None = None,
+    bot: Bot | None = None,
+    chat_id: int | None = None,
 ) -> ClaudeAgentOptions:
     """Build ClaudeAgentOptions from config and session.
 
@@ -26,6 +31,8 @@ def create_claude_options(
         hooks: Optional custom hooks dict. If None, uses default dangerous command hooks.
         mcp_servers: Optional MCP servers dict. If None and config.mcp.auto_load is True,
                      loads from config.
+        bot: Telegram bot instance for permission prompts.
+        chat_id: Telegram chat ID for permission prompts.
 
     Returns:
         Configured ClaudeAgentOptions.
@@ -52,8 +59,13 @@ def create_claude_options(
         if not mcp_servers:
             mcp_servers = None
 
-    # Don't restrict allowed_tools - let SDK handle permissions via permission_mode
-    # MCP tools are dynamically registered and would be blocked by a whitelist
+    # Set up permission manager with Telegram context for interactive permission prompts
+    if bot and chat_id:
+        permission_manager = get_permission_manager()
+        permission_manager.set_telegram_context(bot, chat_id)
+
+    # Use can_use_tool callback for interactive permission prompts
+    # This shows Telegram buttons (Accept/Accept Always/Deny) for each tool request
     options = ClaudeAgentOptions(
         permission_mode=config.claude.permission_mode,
         max_turns=config.claude.max_turns,
@@ -61,6 +73,7 @@ def create_claude_options(
         cwd=cwd,
         hooks=hooks,
         mcp_servers=mcp_servers,
+        can_use_tool=can_use_tool_callback,
     )
 
     # Resume from previous Claude session if available
@@ -79,6 +92,8 @@ class TeleClaudeClient:
         session: Session | None = None,
         hooks: dict | None = None,
         mcp_servers: dict[str, dict[str, Any]] | None = None,
+        bot: Bot | None = None,
+        chat_id: int | None = None,
     ):
         """Initialize with configuration and session.
 
@@ -87,18 +102,27 @@ class TeleClaudeClient:
             session: Current user session (optional for sessionless commands).
             hooks: Optional custom hooks for tool approval.
             mcp_servers: Optional MCP servers dict. If None, uses config.mcp settings.
+            bot: Telegram bot instance for permission prompts.
+            chat_id: Telegram chat ID for permission prompts.
         """
         self.config = config
         self.session = session
         self.hooks = hooks
         self.mcp_servers = mcp_servers
+        self.bot = bot
+        self.chat_id = chat_id
         self._client: Optional[ClaudeSDKClient] = None
         self._options: Optional[ClaudeAgentOptions] = None
 
     async def __aenter__(self) -> "TeleClaudeClient":
         """Enter async context - create SDK client."""
         self._options = create_claude_options(
-            self.config, self.session, self.hooks, self.mcp_servers
+            self.config,
+            self.session,
+            self.hooks,
+            self.mcp_servers,
+            self.bot,
+            self.chat_id,
         )
         self._client = ClaudeSDKClient(options=self._options)
         await self._client.__aenter__()

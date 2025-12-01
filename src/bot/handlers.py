@@ -385,7 +385,13 @@ async def _execute_claude_prompt(
     )
 
     try:
-        async with TeleClaudeClient(config, session) as client:
+        # Pass bot and chat_id for interactive permission prompts
+        async with TeleClaudeClient(
+            config,
+            session,
+            bot=context.bot,
+            chat_id=update.effective_chat.id,
+        ) as client:
             # Track client for cancel
             context.user_data["active_client"] = client
 
