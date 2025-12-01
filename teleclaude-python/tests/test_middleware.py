@@ -59,3 +59,18 @@ async def test_auth_middleware_preserves_function_name():
     wrapped = auth_middleware(my_handler)
 
     assert wrapped.__name__ == "my_handler"
+
+
+@pytest.mark.asyncio
+async def test_auth_middleware_handles_missing_config(mock_update):
+    """auth_middleware handles missing config gracefully."""
+    context = MagicMock()
+    context.bot_data = {}  # No config
+    handler = AsyncMock()
+    wrapped = auth_middleware(handler)
+
+    await wrapped(mock_update, context)
+
+    handler.assert_not_called()
+    mock_update.message.reply_text.assert_called_once()
+    assert "not configured" in str(mock_update.message.reply_text.call_args).lower()
