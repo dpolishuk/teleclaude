@@ -63,7 +63,9 @@
       "Skill(superpowers:finishing-a-development-branch)",
       "Bash(git push:*)",
       "Bash(pgrep:*)",
-      "Bash(kill:*)"
+      "Bash(kill:*)",
+      "Bash(git show:*)",
+      "Bash(find:*)"
     ]
   },
   "enabledMcpjsonServers": [

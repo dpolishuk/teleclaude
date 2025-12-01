@@ -151,6 +151,7 @@ async def show_cost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /cancel command."""
     client = context.user_data.get("active_client")
+    pending = context.user_data.get("pending_command")
 
     if client:
         try:
@@ -160,6 +161,9 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             await update.message.reply_text("🛑 Cancel requested.")
         finally:
             context.user_data.pop("active_client", None)
+    elif pending:
+        context.user_data.pop("pending_command", None)
+        await update.message.reply_text("🛑 Command cancelled.")
     else:
         await update.message.reply_text("ℹ️ No operation in progress.")
 
