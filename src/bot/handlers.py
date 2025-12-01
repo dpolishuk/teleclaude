@@ -20,7 +20,7 @@ from src.claude.streaming import escape_html
 from src.claude.formatting import format_tool_call, format_tool_result, format_status
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
-from src.claude.sessions import scan_projects, scan_sessions
+from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time
 from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard
 
 
@@ -160,12 +160,39 @@ async def continue_session(
 async def list_sessions(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Handle /sessions command."""
-    # TODO: Load sessions from database
-    await update.message.reply_text(
-        "📋 *Your Sessions*\n\nNo sessions found\\. Use /new to create one\\.",
-        parse_mode="MarkdownV2",
-    )
+    """Handle /sessions command - show Claude Code sessions for current project."""
+    session = context.user_data.get("current_session")
+
+    if not session:
+        await update.message.reply_text(
+            "No active project. Use /new to start."
+        )
+        return
+
+    # Get project path and encode it for Claude Code directory lookup
+    project_path = session.project_path
+    encoded_project = encode_project_path(project_path)
+
+    # Scan for sessions in ~/.claude/projects/{encoded_project}/
+    sessions = scan_sessions(encoded_project)
+
+    if not sessions:
+        await update.message.reply_text(
+            f"No sessions found for {project_path}"
+        )
+        return
+
+    # Build text list
+    lines = [f"Sessions for {project_path}:\n"]
+    for s in sessions:
+        time_str = relative_time(s.mtime)
+        preview = s.preview[:40] + "…" if len(s.preview) > 40 else s.preview
+        if preview:
+            lines.append(f"• {time_str}: \"{preview}\"")
+        else:
+            lines.append(f"• {time_str}: (empty)")
+
+    await update.message.reply_text("\n".join(lines))
 
 
 async def switch_session(

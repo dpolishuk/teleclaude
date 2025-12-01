@@ -170,3 +170,56 @@ def decode_project_name(encoded: str) -> str:
         Decoded path (e.g., "/root/work/teleclaude")
     """
     return _decode_project_name(encoded)
+
+
+def encode_project_path(path: str) -> str:
+    """Encode project path to Claude Code directory format.
+
+    Claude Code encodes project paths by replacing '/' with '-'.
+    For example: "/root/work/teleclaude" -> "-root-work-teleclaude"
+
+    Args:
+        path: Project path (e.g., "/root/work/teleclaude")
+
+    Returns:
+        Encoded name (e.g., "-root-work-teleclaude")
+    """
+    # Replace slashes with dashes
+    if path.startswith("/"):
+        return "-" + path[1:].replace("/", "-")
+    return path.replace("/", "-")
+
+
+def relative_time(dt: datetime) -> str:
+    """Format datetime as relative time string.
+
+    Args:
+        dt: Datetime to format
+
+    Returns:
+        Human-readable relative time (e.g., "2h ago", "1d ago")
+    """
+    now = datetime.now()
+    diff = now - dt
+
+    seconds = int(diff.total_seconds())
+    if seconds < 60:
+        return "just now"
+
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h ago"
+
+    days = hours // 24
+    if days < 7:
+        return f"{days}d ago"
+
+    weeks = days // 7
+    if weeks < 4:
+        return f"{weeks}w ago"
+
+    return dt.strftime("%b %d")
