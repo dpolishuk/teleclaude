@@ -19,6 +19,7 @@ class CommandRegistry:
         ("continue", "Resume last session"),
         ("sessions", "List all sessions"),
         ("switch", "Switch to session"),
+        ("models", "Select Claude model"),
         ("help", "Show help"),
         ("cancel", "Stop current operation"),
         ("cost", "Show usage costs"),
