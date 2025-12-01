@@ -17,7 +17,7 @@ from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude import TeleClaudeClient, MessageStreamer
 from src.claude.streaming import escape_html
-from src.claude.formatting import format_tool_call, format_tool_result, format_status
+from src.claude.formatting import format_tool_call, format_tool_result, format_status, format_todos
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
 from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time
@@ -430,6 +430,10 @@ async def _execute_claude_prompt(
         chunk_size=config.streaming.chunk_size,
     )
 
+    # Track todo message separately
+    todo_message = None
+    current_todos = []
+
     try:
         # Get resume mode and model from context if available
         resume_mode = context.user_data.get("resume_mode")
@@ -463,6 +467,29 @@ async def _execute_claude_prompt(
                             await streamer.append_text(tool_info)
                             # Update status with dynamic message
                             current_tool_status = format_status(block.name, block.input or {})
+
+                            # Capture TodoWrite calls and update todo message
+                            if block.name.lower() == "todowrite":
+                                todos_input = block.input or {}
+                                if "todos" in todos_input:
+                                    current_todos = todos_input["todos"]
+                                    todo_text = format_todos(current_todos)
+                                    if todo_text:
+                                        if todo_message is None:
+                                            # Send new todo message
+                                            todo_message = await update.message.reply_text(
+                                                f"<b>Tasks</b>\n{todo_text}",
+                                                parse_mode="HTML"
+                                            )
+                                        else:
+                                            # Update existing todo message
+                                            try:
+                                                await todo_message.edit_text(
+                                                    f"<b>Tasks</b>\n{todo_text}",
+                                                    parse_mode="HTML"
+                                                )
+                                            except Exception:
+                                                pass  # Ignore edit errors
 
                 elif isinstance(message, UserMessage):
                     # Show tool results inline (Claude Code style)

@@ -212,3 +212,43 @@ def format_status(tool_name: str, inputs: dict[str, Any]) -> str:
         return "MCP…"
 
     return f"{tool_name}…"
+
+
+# Todo status symbols
+TODO_COMPLETED = "☑"
+TODO_IN_PROGRESS = "⏳"
+TODO_PENDING = "☐"
+
+
+def format_todos(todos: list[dict]) -> str:
+    """Format a todo list for Telegram display.
+
+    Args:
+        todos: List of todo items with 'content', 'status', and optional 'activeForm'
+
+    Returns:
+        Formatted HTML string with checkbox-style todos
+    """
+    if not todos:
+        return ""
+
+    lines = []
+    for todo in todos:
+        content = todo.get("content", "")
+        status = todo.get("status", "pending")
+
+        # Choose symbol based on status
+        if status == "completed":
+            symbol = TODO_COMPLETED
+        elif status == "in_progress":
+            symbol = TODO_IN_PROGRESS
+            # Use activeForm for in-progress items if available
+            active_form = todo.get("activeForm")
+            if active_form:
+                content = active_form
+        else:
+            symbol = TODO_PENDING
+
+        lines.append(f"{symbol} {escape_html(content)}")
+
+    return "\n".join(lines)
