@@ -19,6 +19,8 @@ from src.claude import TeleClaudeClient, MessageStreamer
 from src.claude.streaming import escape_html
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
+from src.claude.sessions import scan_projects, scan_sessions
+from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard
 
 
 class TypingIndicator:
@@ -476,6 +478,23 @@ async def _create_session(
         f"✅ Created new session for {display_name}\n"
         f"📋 {cmd_count} Claude command(s) available.{mcp_msg}\n\n"
         "Send a message to start chatting with Claude."
+    )
+
+
+async def resume_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /resume command - show project selection."""
+    projects = scan_projects()
+
+    if not projects:
+        await update.message.reply_text(
+            "❌ No Claude Code sessions found in ~/.claude/projects/"
+        )
+        return
+
+    keyboard = build_project_keyboard(projects)
+    await update.message.reply_text(
+        "📁 Select a project to resume:",
+        reply_markup=keyboard,
     )
 
 

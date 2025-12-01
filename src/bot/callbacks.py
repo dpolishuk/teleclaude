@@ -7,6 +7,8 @@ from telegram.ext import ContextTypes
 from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude.permissions import get_permission_manager
+from src.claude.sessions import scan_sessions
+from src.bot.keyboards import build_session_keyboard, build_mode_keyboard
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,10 @@ async def handle_callback(
         "perm_allow": _handle_permission_allow,
         "perm_always": _handle_permission_always,
         "perm_deny": _handle_permission_deny,
+        # Resume callbacks
+        "resume_project": _handle_resume_project,
+        "resume_session": _handle_resume_session,
+        "resume_mode": _handle_resume_mode,
     }
 
     handler = handlers.get(action)
@@ -210,3 +216,86 @@ async def _handle_permission_deny(
         await query.edit_message_text(message)
     else:
         await query.edit_message_text("❌ Invalid permission request.")
+
+
+async def _handle_resume_project(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle resume project selection callback."""
+    query = update.callback_query
+
+    if not value:
+        await query.edit_message_text("❌ Invalid project selection.")
+        return
+
+    # Scan sessions for the selected project
+    sessions = scan_sessions(value)
+
+    if not sessions:
+        await query.edit_message_text("❌ No sessions found for this project.")
+        return
+
+    # Build session selection keyboard
+    keyboard = build_session_keyboard(sessions)
+    await query.edit_message_text(
+        "📋 Select a session to resume:",
+        reply_markup=keyboard,
+    )
+
+
+async def _handle_resume_session(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle resume session selection callback."""
+    query = update.callback_query
+
+    if not value:
+        await query.edit_message_text("❌ Invalid session selection.")
+        return
+
+    # Store session_id in context for later use
+    context.user_data["resume_session_id"] = value
+
+    # Build mode selection keyboard
+    keyboard = build_mode_keyboard(value)
+    await query.edit_message_text(
+        "🔀 Choose resume mode:\n\n"
+        "Fork (safe): Creates a new branch from session history\n"
+        "Continue (same): Continues the exact same session thread",
+        reply_markup=keyboard,
+    )
+
+
+async def _handle_resume_mode(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Handle resume mode selection callback."""
+    query = update.callback_query
+
+    if not value:
+        await query.edit_message_text("❌ Invalid mode selection.")
+        return
+
+    # Parse value as "session_id:mode"
+    if ":" not in value:
+        await query.edit_message_text("❌ Invalid mode data format.")
+        return
+
+    session_id, mode = value.split(":", 1)
+
+    if mode not in ("fork", "continue"):
+        await query.edit_message_text("❌ Invalid mode selection.")
+        return
+
+    # Store mode and session_id in context for Task 4
+    context.user_data["resume_session_id"] = session_id
+    context.user_data["resume_mode"] = mode
+
+    # Show confirmation message
+    mode_text = "fork mode (new branch)" if mode == "fork" else "continue mode (same session)"
+    await query.edit_message_text(
+        f"⏳ Resuming session... ({mode_text})\n\n"
+        "Session will be loaded shortly."
+    )
+
+    # TODO: Actual resume execution will be handled by Task 4

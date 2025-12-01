@@ -28,6 +28,7 @@ from .handlers import (
     handle_message,
     refresh_commands,
     mcp_cmd,
+    resume_cmd,
 )
 from .callbacks import handle_callback
 from .command_handler import handle_claude_command
@@ -89,6 +90,7 @@ def create_application(config: Config) -> Application:
         ("export", export_session),
         ("refresh", refresh_commands),
         ("mcp", mcp_cmd),
+        ("resume", resume_cmd),
     ]
 
     for command, handler in commands:
