@@ -229,3 +229,92 @@ def test_registry_builtin_commands():
     assert "new" in builtins
     assert "help" in builtins
     assert "cancel" in builtins
+
+
+# Task 7: Dynamic Command Handler tests
+from unittest.mock import AsyncMock, MagicMock, patch
+
+
+@pytest.mark.asyncio
+async def test_handle_claude_command_no_args():
+    """Executes command immediately when no args needed."""
+    from src.bot.command_handler import handle_claude_command
+
+    mock_update = MagicMock()
+    mock_update.message = AsyncMock()
+    mock_update.message.text = "/review"
+    mock_update.message.reply_text = AsyncMock(return_value=AsyncMock())
+
+    mock_context = MagicMock()
+    mock_context.user_data = {
+        "current_session": MagicMock(
+            project_path="/test",
+            total_cost_usd=0.0,
+        )
+    }
+    mock_context.bot_data = {
+        "config": MagicMock(
+            streaming=MagicMock(edit_throttle_ms=1000, chunk_size=3800)
+        ),
+        "command_registry": MagicMock(
+            get=MagicMock(return_value=ClaudeCommand(
+                name="review",
+                description="Review code",
+                prompt="Review this code for bugs.",
+                needs_args=False,
+            )),
+            substitute_args=MagicMock(return_value="Review this code for bugs."),
+        ),
+    }
+
+    with patch("src.bot.command_handler.TeleClaudeClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock()
+        mock_client.query = AsyncMock()
+
+        async def mock_receive():
+            if False:
+                yield
+
+        mock_client.receive_response = MagicMock(return_value=mock_receive())
+        mock_client_class.return_value = mock_client
+
+        with patch("src.bot.command_handler.MessageStreamer"):
+            await handle_claude_command(mock_update, mock_context)
+
+        mock_client.query.assert_called_once_with("Review this code for bugs.")
+
+
+@pytest.mark.asyncio
+async def test_handle_claude_command_needs_args():
+    """Prompts for arguments when command needs them."""
+    from src.bot.command_handler import handle_claude_command
+
+    mock_update = MagicMock()
+    mock_update.message = AsyncMock()
+    mock_update.message.text = "/fix-bug"
+    mock_update.message.reply_text = AsyncMock()
+
+    mock_context = MagicMock()
+    mock_context.user_data = {
+        "current_session": MagicMock(project_path="/test"),
+    }
+    mock_context.bot_data = {
+        "command_registry": MagicMock(
+            get=MagicMock(return_value=ClaudeCommand(
+                name="fix-bug",
+                description="Fix a bug",
+                prompt="Fix this bug: $ARGUMENTS",
+                needs_args=True,
+            )),
+        ),
+    }
+
+    await handle_claude_command(mock_update, mock_context)
+
+    # Should prompt for args, not execute
+    mock_update.message.reply_text.assert_called_once()
+    call_args = mock_update.message.reply_text.call_args[0][0]
+    assert "requires input" in call_args
+    assert "pending_command" in mock_context.user_data
