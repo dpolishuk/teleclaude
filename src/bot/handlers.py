@@ -17,6 +17,7 @@ from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude import TeleClaudeClient, MessageStreamer
 from src.claude.streaming import escape_html
+from src.claude.formatting import format_tool_call, format_tool_result, format_status
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
 from src.claude.sessions import scan_projects, scan_sessions
@@ -412,33 +413,32 @@ async def _execute_claude_prompt(
 
             await client.query(prompt)
 
+            # Track current tool for status updates
+            current_tool_status = None
+
             async for message in client.receive_response():
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
                             await streamer.append_text(escape_html(block.text))
                         elif isinstance(block, ToolUseBlock):
-                            # Format tool usage with full details (HTML)
-                            tool_info = f"\n🔧 <b>{escape_html(block.name)}</b>\n"
-                            if block.input:
-                                for key, value in block.input.items():
-                                    # Truncate long values
-                                    str_val = str(value)
-                                    if len(str_val) > 200:
-                                        str_val = str_val[:200] + "..."
-                                    tool_info += f"   <code>{escape_html(key)}</code>: {escape_html(str_val)}\n"
+                            # Claude Code style: compact inline tool call
+                            tool_info = format_tool_call(block.name, block.input or {})
                             await streamer.append_text(tool_info)
+                            # Update status with dynamic message
+                            current_tool_status = format_status(block.name, block.input or {})
 
                 elif isinstance(message, UserMessage):
-                    # Show tool results
+                    # Show tool results inline (Claude Code style)
                     for block in message.content:
                         if isinstance(block, ToolResultBlock):
-                            result_text = str(block.content) if block.content else "(no output)"
-                            # Truncate long results
-                            if len(result_text) > 500:
-                                result_text = result_text[:500] + "\n... (truncated)"
-                            result_info = f"\n📄 Result:\n<pre>{escape_html(result_text)}</pre>\n"
-                            await streamer.append_text(result_info)
+                            result_info = format_tool_result(
+                                block.content,
+                                is_error=block.is_error or False
+                            )
+                            if result_info:
+                                await streamer.append_text(result_info)
+                            current_tool_status = None
 
                 elif isinstance(message, ResultMessage):
                     # Update session with Claude session ID for continuity
