@@ -39,10 +39,19 @@ async def handle_callback(
 async def _handle_cancel(
     update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
 ) -> None:
-    """Handle cancel callback."""
+    """Handle cancel button press."""
     query = update.callback_query
-    # TODO: Cancel any running operation
-    await query.edit_message_text("🛑 Cancelled.")
+    client = context.user_data.get("active_client")
+
+    if client:
+        try:
+            await client.interrupt()
+        except Exception:
+            pass
+        finally:
+            context.user_data.pop("active_client", None)
+
+    await query.edit_message_text("🛑 Operation cancelled.")
 
 
 async def _handle_project_select(
