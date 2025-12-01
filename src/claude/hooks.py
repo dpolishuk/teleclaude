@@ -1,6 +1,8 @@
 """Claude SDK hooks for approval workflow."""
 from typing import Any, Callable
 
+from claude_agent_sdk import HookMatcher
+
 # Default patterns that require user approval (must be lowercase)
 DANGEROUS_PATTERNS: list[str] = [
     "rm -rf",
@@ -128,18 +130,16 @@ def create_approval_hooks(dangerous_commands: list[str] | None = None) -> dict:
             If None, only DANGEROUS_PATTERNS are used.
 
     Returns:
-        A dict suitable for passing to ClaudeAgentOptions hooks parameter.
+        A dict with HookMatcher format suitable for ClaudeAgentOptions.
     """
     if dangerous_commands is None:
-        # Use default hook
         hook = check_dangerous_command
     else:
-        # Combine default patterns with custom ones
         combined_patterns = list(DANGEROUS_PATTERNS) + dangerous_commands
         hook = create_dangerous_command_hook(combined_patterns)
 
     return {
-        "PreToolUse": {
-            "Bash": [hook],
-        }
+        "PreToolUse": [
+            HookMatcher(matcher="Bash", hooks=[hook]),
+        ],
     }
