@@ -2,6 +2,8 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from src.storage.database import get_session
+from src.storage.repository import SessionRepository
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 
 
@@ -267,7 +269,18 @@ async def _create_session(
     project_name: str | None = None,
 ) -> None:
     """Create a new session."""
-    # TODO: Create session in database
+    user_id = update.effective_user.id
+
+    async with get_session() as db:
+        repo = SessionRepository(db)
+        session = await repo.create_session(
+            telegram_user_id=user_id,
+            project_path=project_path,
+            project_name=project_name,
+        )
+        # Store session in user_data for quick access
+        context.user_data["current_session"] = session
+
     display_name = project_name or project_path
     await update.message.reply_text(
         f"✅ Created new session for {display_name}\n\n"
