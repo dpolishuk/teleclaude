@@ -85,15 +85,18 @@ def scan_commands(project_path: str | None = None) -> list[ClaudeCommand]:
                 for md_file in plugin_commands_dir.glob("*.md"):
                     try:
                         # Get plugin name from path for namespacing
-                        # e.g., /cache/superpowers/commands/brainstorm.md -> superpowers:brainstorm
+                        # e.g., /cache/superpowers/commands/brainstorm.md -> superpowers_brainstorm
+                        # Note: Telegram only allows a-z, 0-9, _ in command names (max 32 chars)
                         parts = md_file.relative_to(plugins_dir).parts
                         # Find the plugin name (directory before 'commands')
                         cmd_idx = parts.index("commands")
                         if cmd_idx > 0:
                             plugin_name = parts[cmd_idx - 1]
-                            cmd_name = f"{plugin_name}:{md_file.stem}"
+                            cmd_name = f"{plugin_name}_{md_file.stem}"
                         else:
                             cmd_name = md_file.stem
+                        # Sanitize for Telegram: lowercase, only a-z 0-9 _, max 32 chars
+                        cmd_name = re.sub(r"[^a-z0-9_]", "_", cmd_name.lower())[:32]
 
                         cmd = parse_command_file(md_file, source="plugin")
                         cmd.name = cmd_name  # Override with namespaced name
