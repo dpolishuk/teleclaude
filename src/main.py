@@ -17,14 +17,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main() -> None:
-    """Main entry point."""
+async def init_app():
+    """Initialize database and return configured app."""
     load_dotenv()
 
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN environment variable required")
-        return
+        return None
 
     # Load configuration
     config_path = Path.home() / ".teleclaude" / "config.yaml"
@@ -34,12 +34,22 @@ async def main() -> None:
     # Initialize database
     await init_database(config.database.path)
 
-    # Create and run bot
-    app = create_application(config)
+    # Create app
+    return create_application(config)
+
+
+def main() -> None:
+    """Main entry point."""
+    # Initialize app with async (for database)
+    app = asyncio.run(init_app())
+
+    if app is None:
+        return
 
     logger.info("TeleClaude starting...")
-    await app.run_polling()
+    # run_polling() manages its own event loop
+    app.run_polling()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

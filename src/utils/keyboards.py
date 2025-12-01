@@ -2,14 +2,15 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def project_keyboard(projects: dict[str, str]) -> InlineKeyboardMarkup:
+def project_keyboard(projects: dict[str, str] | None) -> InlineKeyboardMarkup:
     """Create project selection keyboard."""
     buttons = []
 
-    for name, path in projects.items():
-        buttons.append(
-            [InlineKeyboardButton(name, callback_data=f"project:{name}")]
-        )
+    if projects:
+        for name, path in projects.items():
+            buttons.append(
+                [InlineKeyboardButton(name, callback_data=f"project:{name}")]
+            )
 
     # Always add "Other" option for custom path
     buttons.append(
