@@ -1,6 +1,5 @@
 """Command registry for storing and managing commands."""
 import logging
-import re
 
 from telegram import Bot, BotCommand
 
