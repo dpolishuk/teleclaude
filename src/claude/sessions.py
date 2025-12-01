@@ -158,3 +158,15 @@ def _decode_project_name(encoded: str) -> str:
 
     # Fallback if format is unexpected
     return encoded
+
+
+def decode_project_name(encoded: str) -> str:
+    """Decode project name to original path. Public wrapper for _decode_project_name.
+
+    Args:
+        encoded: Encoded project name (e.g., "-root-work-teleclaude")
+
+    Returns:
+        Decoded path (e.g., "/root/work/teleclaude")
+    """
+    return _decode_project_name(encoded)

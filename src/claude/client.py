@@ -21,6 +21,7 @@ def create_claude_options(
     mcp_servers: dict[str, dict[str, Any]] | None = None,
     bot: Bot | None = None,
     chat_id: int | None = None,
+    resume_mode: str | None = None,
 ) -> ClaudeAgentOptions:
     """Build ClaudeAgentOptions from config and session.
 
@@ -32,6 +33,7 @@ def create_claude_options(
                      loads from config.
         bot: Telegram bot instance for permission prompts.
         chat_id: Telegram chat ID for permission prompts.
+        resume_mode: Resume mode - "fork" for fork_session, "continue" for resume.
 
     Returns:
         Configured ClaudeAgentOptions.
@@ -73,7 +75,12 @@ def create_claude_options(
 
     # Resume from previous Claude session if available
     if session and session.claude_session_id:
-        options.fork_session = session.claude_session_id
+        # Use resume_mode to determine which parameter to use
+        if resume_mode == "continue":
+            options.resume = session.claude_session_id
+        else:
+            # Default to fork_session (safe mode)
+            options.fork_session = session.claude_session_id
 
     return options
 
@@ -89,6 +96,7 @@ class TeleClaudeClient:
         mcp_servers: dict[str, dict[str, Any]] | None = None,
         bot: Bot | None = None,
         chat_id: int | None = None,
+        resume_mode: str | None = None,
     ):
         """Initialize with configuration and session.
 
@@ -99,6 +107,7 @@ class TeleClaudeClient:
             mcp_servers: Optional MCP servers dict. If None, uses config.mcp settings.
             bot: Telegram bot instance for permission prompts.
             chat_id: Telegram chat ID for permission prompts.
+            resume_mode: Resume mode - "fork" for fork_session, "continue" for resume.
         """
         self.config = config
         self.session = session
@@ -106,6 +115,7 @@ class TeleClaudeClient:
         self.mcp_servers = mcp_servers
         self.bot = bot
         self.chat_id = chat_id
+        self.resume_mode = resume_mode
         self._client: Optional[ClaudeSDKClient] = None
         self._options: Optional[ClaudeAgentOptions] = None
 
@@ -118,6 +128,7 @@ class TeleClaudeClient:
             self.mcp_servers,
             self.bot,
             self.chat_id,
+            self.resume_mode,
         )
         self._client = ClaudeSDKClient(options=self._options)
         await self._client.__aenter__()

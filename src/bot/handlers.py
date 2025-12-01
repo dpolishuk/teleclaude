@@ -68,6 +68,7 @@ HELP_TEXT = """
 *Session Management*
 /new \\[project\\] \\- Start new session
 /continue \\- Resume last session
+/resume \\- Resume Claude Code session
 /sessions \\- List all sessions
 /switch <id> \\- Switch to session
 /cancel \\- Stop current operation
@@ -388,12 +389,16 @@ async def _execute_claude_prompt(
     )
 
     try:
+        # Get resume mode from context if available
+        resume_mode = context.user_data.get("resume_mode")
+
         # Pass bot and chat_id for interactive permission prompts
         async with TeleClaudeClient(
             config,
             session,
             bot=context.bot,
             chat_id=update.effective_chat.id,
+            resume_mode=resume_mode,
         ) as client:
             # Track client for cancel
             context.user_data["active_client"] = client

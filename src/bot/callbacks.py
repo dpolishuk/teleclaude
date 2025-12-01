@@ -7,7 +7,7 @@ from telegram.ext import ContextTypes
 from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude.permissions import get_permission_manager
-from src.claude.sessions import scan_sessions
+from src.claude.sessions import scan_sessions, decode_project_name
 from src.bot.keyboards import build_session_keyboard, build_mode_keyboard
 
 logger = logging.getLogger(__name__)
@@ -228,6 +228,9 @@ async def _handle_resume_project(
         await query.edit_message_text("❌ Invalid project selection.")
         return
 
+    # Store project name for later use
+    context.user_data["resume_project_name"] = value
+
     # Scan sessions for the selected project
     sessions = scan_sessions(value)
 
@@ -253,15 +256,34 @@ async def _handle_resume_session(
         await query.edit_message_text("❌ Invalid session selection.")
         return
 
-    # Store session_id in context for later use
+    # Get the session info to retrieve preview
+    project_name = context.user_data.get("resume_project_name")
+    if not project_name:
+        await query.edit_message_text("❌ Project information lost. Please start over with /resume")
+        return
+
+    # Scan sessions again to get the full session info
+    sessions = scan_sessions(project_name)
+    session_info = next((s for s in sessions if s.session_id == value), None)
+
+    if not session_info:
+        await query.edit_message_text("❌ Session not found.")
+        return
+
+    # Store session_id and preview in context for later use
     context.user_data["resume_session_id"] = value
+    context.user_data["resume_session_preview"] = session_info.preview
 
     # Build mode selection keyboard
     keyboard = build_mode_keyboard(value)
+
+    # Create message with session preview
+    preview_text = session_info.preview if session_info.preview else "(no preview)"
     await query.edit_message_text(
-        "🔀 Choose resume mode:\n\n"
-        "Fork (safe): Creates a new branch from session history\n"
-        "Continue (same): Continues the exact same session thread",
+        f"🔀 Choose resume mode:\n\n"
+        f"Session: \"{preview_text}\"\n\n"
+        f"Fork (safe): Creates a new branch from session history\n"
+        f"Continue (same): Continues the exact same session thread",
         reply_markup=keyboard,
     )
 
@@ -287,15 +309,41 @@ async def _handle_resume_mode(
         await query.edit_message_text("❌ Invalid mode selection.")
         return
 
-    # Store mode and session_id in context for Task 4
+    # Get project name from context
+    project_name = context.user_data.get("resume_project_name")
+    if not project_name:
+        await query.edit_message_text("❌ Project information lost. Please start over with /resume")
+        return
+
+    # Decode project name to get project path
+    project_path = decode_project_name(project_name)
+
+    # Store mode and session_id in context
     context.user_data["resume_session_id"] = session_id
     context.user_data["resume_mode"] = mode
 
-    # Show confirmation message
-    mode_text = "fork mode (new branch)" if mode == "fork" else "continue mode (same session)"
-    await query.edit_message_text(
-        f"⏳ Resuming session... ({mode_text})\n\n"
-        "Session will be loaded shortly."
-    )
+    # Create TeleClaude Session record in database
+    user_id = update.effective_user.id
+    async with get_session() as db:
+        repo = SessionRepository(db)
+        session = await repo.create_session(
+            telegram_user_id=user_id,
+            project_path=project_path,
+            current_directory=project_path,
+            claude_session_id=session_id,
+        )
+        # Store session in user_data for quick access
+        context.user_data["current_session"] = session
 
-    # TODO: Actual resume execution will be handled by Task 4
+    # Refresh commands for this project
+    registry = context.bot_data.get("command_registry")
+    if registry:
+        await registry.refresh(query.get_bot(), project_path=project_path)
+
+    # Show confirmation message
+    mode_text = "forked (new branch)" if mode == "fork" else "continued (same session)"
+    await query.edit_message_text(
+        f"✅ Session resumed! ({mode_text})\n\n"
+        f"📂 Project: {project_path}\n\n"
+        "You can now continue chatting with Claude."
+    )

@@ -159,22 +159,32 @@ class TestResumeSessionCallback:
     async def test_handle_resume_session_with_value(self, mock_callback_update, mock_context):
         """Test resume_session callback with valid session ID."""
         session_id = "session123"
+        mock_context.user_data["resume_project_name"] = "-root-work-teleclaude"
 
-        with patch("src.bot.callbacks.build_mode_keyboard") as mock_keyboard:
+        with patch("src.bot.callbacks.build_mode_keyboard") as mock_keyboard, \
+             patch("src.bot.callbacks.scan_sessions") as mock_scan:
+
             mock_keyboard.return_value = MagicMock()
+            # Mock session info with preview
+            mock_session = MagicMock()
+            mock_session.session_id = session_id
+            mock_session.preview = "test preview"
+            mock_scan.return_value = [mock_session]
 
             await _handle_resume_session(mock_callback_update, mock_context, session_id)
 
-            # Check that session_id was stored
+            # Check that session_id and preview were stored
             assert mock_context.user_data["resume_session_id"] == session_id
+            assert mock_context.user_data["resume_session_preview"] == "test preview"
 
             # Check that mode keyboard was built
             mock_keyboard.assert_called_once_with(session_id)
 
-            # Check that message was edited
+            # Check that message was edited with preview
             mock_callback_update.callback_query.edit_message_text.assert_called_once()
             call_args = mock_callback_update.callback_query.edit_message_text.call_args
             assert "Choose resume mode:" in call_args[0][0]
+            assert "test preview" in call_args[0][0]
             assert "reply_markup" in call_args[1]
 
 
@@ -211,29 +221,79 @@ class TestResumeModeCallback:
     @pytest.mark.asyncio
     async def test_handle_resume_mode_fork(self, mock_callback_update, mock_context):
         """Test resume_mode callback with fork mode."""
-        await _handle_resume_mode(mock_callback_update, mock_context, "session123:fork")
+        from unittest.mock import AsyncMock
 
-        # Check that session_id and mode were stored
-        assert mock_context.user_data["resume_session_id"] == "session123"
-        assert mock_context.user_data["resume_mode"] == "fork"
+        mock_context.user_data["resume_project_name"] = "-root-work-teleclaude"
+        mock_registry = MagicMock()
+        mock_registry.refresh = AsyncMock(return_value=5)
+        mock_context.bot_data = {"command_registry": mock_registry}
 
-        # Check message
-        mock_callback_update.callback_query.edit_message_text.assert_called_once()
-        call_args = mock_callback_update.callback_query.edit_message_text.call_args
-        assert "fork mode" in call_args[0][0]
-        assert "Resuming session..." in call_args[0][0]
+        with patch("src.bot.callbacks.decode_project_name") as mock_decode, \
+             patch("src.bot.callbacks.get_session") as mock_db:
+
+            mock_decode.return_value = "/root/work/teleclaude"
+            # Mock database session
+            mock_db_session = MagicMock()
+            mock_db_session.__aenter__.return_value = mock_db_session
+            mock_db_session.__aexit__.return_value = None
+            mock_db.return_value = mock_db_session
+
+            # Mock repository with AsyncMock
+            mock_repo = MagicMock()
+            mock_session_obj = MagicMock()
+            from unittest.mock import AsyncMock
+            mock_repo.create_session = AsyncMock(return_value=mock_session_obj)
+
+            with patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
+                await _handle_resume_mode(mock_callback_update, mock_context, "session123:fork")
+
+                # Check that session_id and mode were stored
+                assert mock_context.user_data["resume_session_id"] == "session123"
+                assert mock_context.user_data["resume_mode"] == "fork"
+                assert mock_context.user_data["current_session"] == mock_session_obj
+
+                # Check message
+                mock_callback_update.callback_query.edit_message_text.assert_called_once()
+                call_args = mock_callback_update.callback_query.edit_message_text.call_args
+                assert "forked" in call_args[0][0]
+                assert "Session resumed!" in call_args[0][0]
 
     @pytest.mark.asyncio
     async def test_handle_resume_mode_continue(self, mock_callback_update, mock_context):
         """Test resume_mode callback with continue mode."""
-        await _handle_resume_mode(mock_callback_update, mock_context, "session123:continue")
+        from unittest.mock import AsyncMock
 
-        # Check that session_id and mode were stored
-        assert mock_context.user_data["resume_session_id"] == "session123"
-        assert mock_context.user_data["resume_mode"] == "continue"
+        mock_context.user_data["resume_project_name"] = "-root-work-teleclaude"
+        mock_registry = MagicMock()
+        mock_registry.refresh = AsyncMock(return_value=5)
+        mock_context.bot_data = {"command_registry": mock_registry}
 
-        # Check message
-        mock_callback_update.callback_query.edit_message_text.assert_called_once()
-        call_args = mock_callback_update.callback_query.edit_message_text.call_args
-        assert "continue mode" in call_args[0][0]
-        assert "Resuming session..." in call_args[0][0]
+        with patch("src.bot.callbacks.decode_project_name") as mock_decode, \
+             patch("src.bot.callbacks.get_session") as mock_db:
+
+            mock_decode.return_value = "/root/work/teleclaude"
+            # Mock database session
+            mock_db_session = MagicMock()
+            mock_db_session.__aenter__.return_value = mock_db_session
+            mock_db_session.__aexit__.return_value = None
+            mock_db.return_value = mock_db_session
+
+            # Mock repository with AsyncMock
+            mock_repo = MagicMock()
+            mock_session_obj = MagicMock()
+            from unittest.mock import AsyncMock
+            mock_repo.create_session = AsyncMock(return_value=mock_session_obj)
+
+            with patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
+                await _handle_resume_mode(mock_callback_update, mock_context, "session123:continue")
+
+                # Check that session_id and mode were stored
+                assert mock_context.user_data["resume_session_id"] == "session123"
+                assert mock_context.user_data["resume_mode"] == "continue"
+                assert mock_context.user_data["current_session"] == mock_session_obj
+
+                # Check message
+                mock_callback_update.callback_query.edit_message_text.assert_called_once()
+                call_args = mock_callback_update.callback_query.edit_message_text.call_args
+                assert "continued" in call_args[0][0]
+                assert "Session resumed!" in call_args[0][0]
