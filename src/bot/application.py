@@ -54,7 +54,17 @@ async def post_init(application: Application) -> None:
 
 def create_application(config: Config) -> Application:
     """Create and configure Telegram Application."""
-    app = Application.builder().token(config.telegram_token).post_init(post_init).build()
+    # Enable concurrent_updates to allow callback queries to be processed
+    # while another handler (like Claude message processing) is running.
+    # This is critical for permission prompts to work - without it,
+    # button clicks can't be processed while waiting for permission response.
+    app = (
+        Application.builder()
+        .token(config.telegram_token)
+        .post_init(post_init)
+        .concurrent_updates(True)
+        .build()
+    )
 
     # Store config in bot_data for handlers to access
     app.bot_data["config"] = config

@@ -141,10 +141,11 @@ async def continue_session(
     session = context.user_data.get("current_session")
 
     if session:
+        display_name = session.project_name or session.project_path
         await update.message.reply_text(
-            f"▶️ Continuing session in `{session.project_name or session.project_path}`\n\n"
+            f"▶️ Continuing session in <code>{escape_html(display_name)}</code>\n\n"
             "Send a message to chat with Claude.",
-            parse_mode="MarkdownV2",
+            parse_mode="HTML",
         )
     else:
         await update.message.reply_text(
