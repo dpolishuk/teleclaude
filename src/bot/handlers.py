@@ -2,8 +2,16 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from claude_agent_sdk import (
+    AssistantMessage,
+    TextBlock,
+    ToolUseBlock,
+    ResultMessage,
+)
+
 from src.storage.database import get_session
 from src.storage.repository import SessionRepository
+from src.claude import TeleClaudeClient, MessageStreamer
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 
 
@@ -134,8 +142,18 @@ async def show_cost(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /cancel command."""
-    # TODO: Cancel running Claude operation
-    await update.message.reply_text("🛑 Operation cancelled.")
+    client = context.user_data.get("active_client")
+
+    if client:
+        try:
+            await client.interrupt()
+            await update.message.reply_text("🛑 Operation cancelled.")
+        except Exception:
+            await update.message.reply_text("🛑 Cancel requested.")
+        finally:
+            context.user_data.pop("active_client", None)
+    else:
+        await update.message.reply_text("ℹ️ No operation in progress.")
 
 
 async def cd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -249,6 +267,7 @@ async def handle_message(
         return
 
     prompt = update.message.text
+    config = context.bot_data.get("config")
 
     # Send "thinking" message
     thinking_msg = await update.message.reply_text(
@@ -256,10 +275,41 @@ async def handle_message(
         reply_markup=cancel_keyboard(),
     )
 
-    # TODO: Send to Claude and stream response
-    await thinking_msg.edit_text(
-        f"Response to: {prompt}\n\n(Claude integration pending)"
+    # Create streamer for this response
+    streamer = MessageStreamer(
+        message=thinking_msg,
+        throttle_ms=config.streaming.edit_throttle_ms,
+        chunk_size=config.streaming.chunk_size,
     )
+
+    try:
+        async with TeleClaudeClient(config, session) as client:
+            # Track client for cancel
+            context.user_data["active_client"] = client
+
+            await client.query(prompt)
+
+            async for message in client.receive_response():
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, TextBlock):
+                            await streamer.append_text(block.text)
+                        elif isinstance(block, ToolUseBlock):
+                            tool_info = f"\n🔧 Using: {block.name}\n"
+                            await streamer.append_text(tool_info)
+
+                elif isinstance(message, ResultMessage):
+                    # Update session cost
+                    if message.total_cost_usd:
+                        session.total_cost_usd += message.total_cost_usd
+
+            # Final flush
+            await streamer.flush()
+
+    except Exception as e:
+        await thinking_msg.edit_text(f"❌ Error: {str(e)}")
+    finally:
+        context.user_data.pop("active_client", None)
 
 
 async def _create_session(
