@@ -74,14 +74,21 @@ def create_claude_options(
     )
 
     # Resume from previous Claude session if available
+    import logging
+    logger = logging.getLogger(__name__)
+
     if session and session.claude_session_id:
         # Use resume_mode to determine which parameter to use
         # Default to resume (continue) for seamless conversation continuity
         if resume_mode == "fork":
+            logger.info(f"Using fork_session: {session.claude_session_id}")
             options.fork_session = session.claude_session_id
         else:
             # Default to resume - identical to Claude Code behavior
+            logger.info(f"Using resume: {session.claude_session_id}")
             options.resume = session.claude_session_id
+    else:
+        logger.info(f"No claude_session_id to resume (session={session is not None}, claude_session_id={session.claude_session_id if session else None})")
 
     return options
 

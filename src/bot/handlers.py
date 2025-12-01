@@ -368,8 +368,15 @@ async def _execute_claude_prompt(
     prompt: str,
 ) -> None:
     """Execute a prompt and stream Claude's response."""
+    import logging
+    logger = logging.getLogger(__name__)
+
     session = context.user_data.get("current_session")
     config = context.bot_data.get("config")
+
+    # Debug: log session state before query
+    if session:
+        logger.info(f"Session before query: id={session.id}, claude_session_id={session.claude_session_id}")
 
     # Send "thinking" message
     thinking_msg = await update.message.reply_text(
@@ -436,7 +443,13 @@ async def _execute_claude_prompt(
                 elif isinstance(message, ResultMessage):
                     # Update session with Claude session ID for continuity
                     if session and message.session_id:
+                        logger.info(f"Got session_id from Claude: {message.session_id}")
                         session.claude_session_id = message.session_id
+                        # Persist to database
+                        async with get_session() as db:
+                            repo = SessionRepository(db)
+                            await repo.set_claude_session_id(session.id, message.session_id)
+                        logger.info(f"Saved claude_session_id to database: {message.session_id}")
                     # Update session cost (if session exists)
                     if session and message.total_cost_usd:
                         session.total_cost_usd += message.total_cost_usd
