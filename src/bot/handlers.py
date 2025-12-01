@@ -2,10 +2,13 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+import json
 from claude_agent_sdk import (
     AssistantMessage,
+    UserMessage,
     TextBlock,
     ToolUseBlock,
+    ToolResultBlock,
     ResultMessage,
 )
 
@@ -295,8 +298,27 @@ async def handle_message(
                         if isinstance(block, TextBlock):
                             await streamer.append_text(block.text)
                         elif isinstance(block, ToolUseBlock):
-                            tool_info = f"\n🔧 Using: {block.name}\n"
+                            # Format tool usage with full details
+                            tool_info = f"\n🔧 **{block.name}**\n"
+                            if block.input:
+                                for key, value in block.input.items():
+                                    # Truncate long values
+                                    str_val = str(value)
+                                    if len(str_val) > 200:
+                                        str_val = str_val[:200] + "..."
+                                    tool_info += f"   {key}: {str_val}\n"
                             await streamer.append_text(tool_info)
+
+                elif isinstance(message, UserMessage):
+                    # Show tool results
+                    for block in message.content:
+                        if isinstance(block, ToolResultBlock):
+                            result_text = str(block.content) if block.content else "(no output)"
+                            # Truncate long results
+                            if len(result_text) > 500:
+                                result_text = result_text[:500] + "\n... (truncated)"
+                            result_info = f"\n📄 Result:\n```\n{result_text}\n```\n"
+                            await streamer.append_text(result_info)
 
                 elif isinstance(message, ResultMessage):
                     # Update session cost

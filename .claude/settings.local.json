@@ -58,7 +58,10 @@
       "Bash(./venv/bin/pip show:*)",
       "Bash(/root/work/teleclaude/venv/bin/python -m pytest /root/work/teleclaude/tests/test_hooks.py -v)",
       "Bash(/root/work/teleclaude/venv/bin/python -m pytest:*)",
-      "Bash(/root/work/teleclaude/venv/bin/python:*)"
+      "Bash(/root/work/teleclaude/venv/bin/python:*)",
+      "Bash(pkill:*)",
+      "Skill(superpowers:finishing-a-development-branch)",
+      "Bash(git push:*)"
     ]
   },
   "enabledMcpjsonServers": [
