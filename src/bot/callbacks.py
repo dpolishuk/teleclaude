@@ -2,6 +2,9 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from src.storage.database import get_session
+from src.storage.repository import SessionRepository
+
 
 def parse_callback_data(data: str) -> tuple[str, str | None]:
     """Parse callback data into action and value."""
@@ -60,6 +63,7 @@ async def _handle_project_select(
     """Handle project selection callback."""
     query = update.callback_query
     config = context.bot_data.get("config")
+    user_id = update.effective_user.id
 
     if value == "other":
         await query.edit_message_text(
@@ -70,10 +74,26 @@ async def _handle_project_select(
 
     if value and value in config.projects:
         project_path = config.projects[value]
-        # TODO: Create session
+
+        # Create session in database
+        async with get_session() as db:
+            repo = SessionRepository(db)
+            session = await repo.create_session(
+                telegram_user_id=user_id,
+                project_path=project_path,
+                project_name=value,
+            )
+            # Store session in user_data for quick access
+            context.user_data["current_session"] = session
+
+        # Refresh commands for this project
+        registry = context.bot_data.get("command_registry")
+        cmd_count = await registry.refresh(query.get_bot(), project_path=project_path)
+
         await query.edit_message_text(
-            f"✅ Starting session for `{value}`\n\n"
-            f"Path: `{project_path}`\n\n"
+            f"✅ Created session for `{value}`\n\n"
+            f"📂 Path: `{project_path}`\n"
+            f"📋 {cmd_count} Claude command(s) available.\n\n"
             "Send a message to chat with Claude."
         )
     else:
