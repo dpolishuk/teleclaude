@@ -7,6 +7,7 @@ from .hooks import (
     create_dangerous_command_hook,
     DANGEROUS_PATTERNS,
 )
+from .streaming import MessageStreamer
 
 __all__ = [
     "TeleClaudeClient",
@@ -16,4 +17,5 @@ __all__ = [
     "create_approval_hooks",
     "create_dangerous_command_hook",
     "DANGEROUS_PATTERNS",
+    "MessageStreamer",
 ]
