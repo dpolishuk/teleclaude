@@ -15,6 +15,7 @@ from claude_agent_sdk import (
 from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude import TeleClaudeClient, MessageStreamer
+from src.claude.streaming import escape_html
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 
 
@@ -296,17 +297,17 @@ async def handle_message(
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
-                            await streamer.append_text(block.text)
+                            await streamer.append_text(escape_html(block.text))
                         elif isinstance(block, ToolUseBlock):
-                            # Format tool usage with full details
-                            tool_info = f"\n🔧 **{block.name}**\n"
+                            # Format tool usage with full details (HTML)
+                            tool_info = f"\n🔧 <b>{escape_html(block.name)}</b>\n"
                             if block.input:
                                 for key, value in block.input.items():
                                     # Truncate long values
                                     str_val = str(value)
                                     if len(str_val) > 200:
                                         str_val = str_val[:200] + "..."
-                                    tool_info += f"   {key}: {str_val}\n"
+                                    tool_info += f"   <code>{escape_html(key)}</code>: {escape_html(str_val)}\n"
                             await streamer.append_text(tool_info)
 
                 elif isinstance(message, UserMessage):
@@ -317,7 +318,7 @@ async def handle_message(
                             # Truncate long results
                             if len(result_text) > 500:
                                 result_text = result_text[:500] + "\n... (truncated)"
-                            result_info = f"\n📄 Result:\n```\n{result_text}\n```\n"
+                            result_info = f"\n📄 Result:\n<pre>{escape_html(result_text)}</pre>\n"
                             await streamer.append_text(result_info)
 
                 elif isinstance(message, ResultMessage):

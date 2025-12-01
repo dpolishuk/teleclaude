@@ -1,10 +1,16 @@
 """Streaming responses to Telegram with throttling."""
 import asyncio
+import html
 import time
 from typing import Optional
 
 from telegram import Message
 from telegram.error import BadRequest, TimedOut
+
+
+def escape_html(text: str) -> str:
+    """Escape HTML special characters for Telegram."""
+    return html.escape(text)
 
 
 class MessageStreamer:
@@ -19,6 +25,7 @@ class MessageStreamer:
         message: Message,
         throttle_ms: int = 1000,
         chunk_size: int = 3800,
+        parse_mode: str | None = "HTML",
     ):
         """Initialize streamer.
 
@@ -26,10 +33,12 @@ class MessageStreamer:
             message: Telegram message to edit with updates.
             throttle_ms: Minimum milliseconds between message edits.
             chunk_size: Maximum characters to display (Telegram limit ~4096).
+            parse_mode: Telegram parse mode (HTML, MarkdownV2, or None).
         """
         self.message = message
         self.throttle_ms = throttle_ms
         self.chunk_size = chunk_size
+        self.parse_mode = parse_mode
         self.current_text = ""
         self._last_edit_time: float = 0
         self._pending_flush: bool = False
@@ -71,7 +80,7 @@ class MessageStreamer:
         display_text = self._get_display_text()
 
         try:
-            await self.message.edit_text(display_text)
+            await self.message.edit_text(display_text, parse_mode=self.parse_mode)
             self._last_edit_time = time.time() * 1000
             self._pending_flush = False
         except BadRequest as e:
