@@ -483,37 +483,37 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # No args - show status
     if not context.args:
         status_msg = mcp_manager.format_status_message()
-        await update.message.reply_text(status_msg, parse_mode="MarkdownV2")
+        await update.message.reply_text(status_msg, parse_mode="HTML")
         return
 
     subcommand = context.args[0].lower()
 
     if subcommand == "list":
         status_msg = mcp_manager.format_status_message()
-        await update.message.reply_text(status_msg, parse_mode="MarkdownV2")
+        await update.message.reply_text(status_msg, parse_mode="HTML")
 
     elif subcommand == "test":
         # Test specific server or all
         if len(context.args) > 1:
             server_name = context.args[1]
-            await update.message.reply_text(f"🔍 Testing {server_name}...")
+            await update.message.reply_text(f"🔍 Testing {escape_html(server_name)}...")
             info = await mcp_manager.test_server(server_name)
             status_icon = "🟢" if info.status.value == "online" else "🔴"
-            msg = f"{status_icon} `{info.name}`: {info.status.value}"
+            msg = f"{status_icon} <code>{escape_html(info.name)}</code>: {info.status.value}"
             if info.error:
-                msg += f"\n└─ {info.error}"
-            await update.message.reply_text(msg, parse_mode="MarkdownV2")
+                msg += f"\n└─ {escape_html(info.error)}"
+            await update.message.reply_text(msg, parse_mode="HTML")
         else:
             await update.message.reply_text("🔍 Testing all MCP servers...")
             results = await mcp_manager.test_all_servers()
-            lines = ["*Test Results*\n"]
+            lines = ["<b>Test Results</b>\n"]
             for info in results:
                 icon = "🟢" if info.status.value == "online" else "🔴" if info.status.value in ("offline", "error") else "⏸️"
-                line = f"{icon} `{info.name}`: {info.status.value}"
+                line = f"{icon} <code>{escape_html(info.name)}</code>: {info.status.value}"
                 if info.error:
                     line += f"\n   └─ {escape_html(info.error)}"
                 lines.append(line)
-            await update.message.reply_text("\n".join(lines), parse_mode="MarkdownV2")
+            await update.message.reply_text("\n".join(lines), parse_mode="HTML")
 
     elif subcommand == "enable":
         if len(context.args) < 2:
@@ -521,9 +521,9 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
         server_name = context.args[1]
         if mcp_manager.enable_server(server_name):
-            await update.message.reply_text(f"✅ Enabled MCP server: `{server_name}`", parse_mode="MarkdownV2")
+            await update.message.reply_text(f"✅ Enabled MCP server: <code>{escape_html(server_name)}</code>", parse_mode="HTML")
         else:
-            await update.message.reply_text(f"❌ Server not found: {server_name}")
+            await update.message.reply_text(f"❌ Server not found: {escape_html(server_name)}")
 
     elif subcommand == "disable":
         if len(context.args) < 2:
@@ -531,9 +531,9 @@ async def mcp_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             return
         server_name = context.args[1]
         if mcp_manager.disable_server(server_name):
-            await update.message.reply_text(f"⏸️ Disabled MCP server: `{server_name}`", parse_mode="MarkdownV2")
+            await update.message.reply_text(f"⏸️ Disabled MCP server: <code>{escape_html(server_name)}</code>", parse_mode="HTML")
         else:
-            await update.message.reply_text(f"❌ Server not found: {server_name}")
+            await update.message.reply_text(f"❌ Server not found: {escape_html(server_name)}")
 
     elif subcommand == "reload":
         count = mcp_manager.reload_config()

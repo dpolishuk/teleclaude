@@ -269,15 +269,17 @@ class MCPManager:
         return servers if servers else None
 
     def format_status_message(self) -> str:
-        """Format server status for display.
+        """Format server status for display (HTML format).
 
         Returns:
-            Formatted status message.
+            Formatted status message in HTML.
         """
+        import html
+
         if not self._server_info:
             return "No MCP servers configured."
 
-        lines = ["🔌 *MCP Servers*\n"]
+        lines = ["🔌 <b>MCP Servers</b>\n"]
 
         status_icons = {
             ServerStatus.ONLINE: "🟢",
@@ -289,16 +291,17 @@ class MCPManager:
 
         for name, info in self._server_info.items():
             icon = status_icons.get(info.status, "❓")
-            type_badge = f"[{info.config.type}]"
+            type_badge = f"[{html.escape(info.config.type)}]"
             status_text = info.status.value
 
-            line = f"{icon} `{name}` {type_badge} - {status_text}"
+            line = f"{icon} <code>{html.escape(name)}</code> {type_badge} - {status_text}"
             if info.error:
-                line += f"\n   └─ {info.error}"
+                line += f"\n   └─ {html.escape(info.error)}"
 
             lines.append(line)
 
-        lines.append(f"\n📂 Config: `{self._config.config_path or 'none'}`")
+        config_path = html.escape(str(self._config.config_path or "none"))
+        lines.append(f"\n📂 Config: <code>{config_path}</code>")
         lines.append(f"🔧 Master: {'enabled' if self._config.enabled else 'disabled'}")
 
         return "\n".join(lines)
