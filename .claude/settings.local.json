@@ -61,7 +61,9 @@
       "Bash(/root/work/teleclaude/venv/bin/python:*)",
       "Bash(pkill:*)",
       "Skill(superpowers:finishing-a-development-branch)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(pgrep:*)",
+      "Bash(kill:*)"
     ]
   },
   "enabledMcpjsonServers": [
