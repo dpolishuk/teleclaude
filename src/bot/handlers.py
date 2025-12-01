@@ -268,8 +268,8 @@ async def _create_session(
 ) -> None:
     """Create a new session."""
     # TODO: Create session in database
+    display_name = project_name or project_path
     await update.message.reply_text(
-        f"✅ Created new session for `{project_name or project_path}`\n\n"
-        "Send a message to start chatting with Claude.",
-        parse_mode="MarkdownV2",
+        f"✅ Created new session for {display_name}\n\n"
+        "Send a message to start chatting with Claude."
     )
