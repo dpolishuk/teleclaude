@@ -8,6 +8,13 @@ from .hooks import (
     DANGEROUS_PATTERNS,
 )
 from .streaming import MessageStreamer
+from .sessions import (
+    Project,
+    SessionInfo,
+    scan_projects,
+    scan_sessions,
+    parse_session_preview,
+)
 
 __all__ = [
     "TeleClaudeClient",
@@ -18,4 +25,9 @@ __all__ = [
     "create_dangerous_command_hook",
     "DANGEROUS_PATTERNS",
     "MessageStreamer",
+    "Project",
+    "SessionInfo",
+    "scan_projects",
+    "scan_sessions",
+    "parse_session_preview",
 ]
