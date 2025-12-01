@@ -4,39 +4,40 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
 env/
-ENV/
-.venv
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
 
-# pytest
+# Poetry
+poetry.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
 .pytest_cache/
 .coverage
 htmlcov/
-
-# mypy
+.tox/
 .mypy_cache/
-.dmypy.json
-dmypy.json
 
-# ruff
-.ruff_cache/
+# Environment
+.env
+.env.local
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Database
+*.db
+*.sqlite
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Environment
-.env
-*.db
-*.db-journal
 
 # User config
 config.yaml
