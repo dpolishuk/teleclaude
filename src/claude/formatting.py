@@ -299,10 +299,12 @@ def format_diff(content: str) -> str:
 TODO_COMPLETED = "☑"
 TODO_IN_PROGRESS = "⏳"
 TODO_PENDING = "☐"
+TODO_ICON = "📋"
+COMPACT_TODO_THRESHOLD = 10
 
 
 def format_todos(todos: list[dict]) -> str:
-    """Format a todo list for Telegram display.
+    """Format a todo list with hierarchy and progress.
 
     Args:
         todos: List of todo items with 'content', 'status', and optional 'activeForm'
@@ -313,26 +315,122 @@ def format_todos(todos: list[dict]) -> str:
     if not todos:
         return ""
 
-    lines = []
-    for todo in todos:
-        content = todo.get("content", "")
-        status = todo.get("status", "pending")
+    # Calculate progress
+    completed = sum(1 for t in todos if t.get("status") == "completed")
+    total = len(todos)
 
-        # Choose symbol based on status
-        if status == "completed":
-            symbol = TODO_COMPLETED
-        elif status == "in_progress":
-            symbol = TODO_IN_PROGRESS
-            # Use activeForm for in-progress items if available
-            active_form = todo.get("activeForm")
-            if active_form:
-                content = active_form
-        else:
-            symbol = TODO_PENDING
+    lines = [f"{TODO_ICON} <b>Progress: {completed}/{total}</b>\n"]
 
-        lines.append(f"{symbol} {escape_html(content)}")
+    # Detect parent-child relationships
+    groups = _group_todos(todos)
+
+    # Compact mode if too many items
+    if total > COMPACT_TODO_THRESHOLD:
+        lines.extend(_format_compact_todos(groups))
+    else:
+        lines.extend(_format_full_todos(groups))
 
     return "\n".join(lines)
+
+
+def _group_todos(todos: list[dict]) -> list[tuple[dict, list[dict]]]:
+    """Group todos by detecting parent-child relationships.
+
+    Returns list of (parent, children) tuples.
+    """
+    groups: list[tuple[dict, list[dict]]] = []
+    i = 0
+
+    while i < len(todos):
+        parent = todos[i]
+        children: list[dict] = []
+        parent_content = parent.get("content", "").lower()
+
+        # Look for children (items with parent content as prefix)
+        j = i + 1
+        while j < len(todos):
+            child_content = todos[j].get("content", "").lower()
+            # Check if child starts with parent content or has ": " pattern
+            if (child_content.startswith(parent_content + ":") or
+                child_content.startswith(parent_content + " -")):
+                children.append(todos[j])
+                j += 1
+            else:
+                break
+
+        groups.append((parent, children))
+        i = j if children else i + 1
+
+    return groups
+
+
+def _format_full_todos(groups: list[tuple[dict, list[dict]]]) -> list[str]:
+    """Format todos with full hierarchy."""
+    lines: list[str] = []
+
+    for parent, children in groups:
+        lines.append(_format_todo_item(parent))
+
+        for idx, child in enumerate(children):
+            is_last = idx == len(children) - 1
+            connector = "└" if is_last else "├"
+            lines.append(f"  {connector} {_format_todo_item(child, inline=True)}")
+
+    return lines
+
+
+def _format_compact_todos(groups: list[tuple[dict, list[dict]]]) -> list[str]:
+    """Format todos in compact mode."""
+    lines: list[str] = []
+
+    completed_count = 0
+    in_progress_shown = False
+    pending_shown = 0
+
+    for parent, children in groups:
+        status = parent.get("status", "pending")
+
+        if status == "completed":
+            completed_count += 1
+            for child in children:
+                if child.get("status") == "completed":
+                    completed_count += 1
+        elif status == "in_progress":
+            if not in_progress_shown:
+                lines.append(_format_todo_item(parent))
+                for idx, child in enumerate(children):
+                    is_last = idx == len(children) - 1
+                    connector = "└" if is_last else "├"
+                    lines.append(f"  {connector} {_format_todo_item(child, inline=True)}")
+                in_progress_shown = True
+        elif status == "pending" and pending_shown < 2:
+            lines.append(_format_todo_item(parent))
+            pending_shown += 1
+
+    if completed_count > 0:
+        lines.insert(0, f"{TODO_COMPLETED} <i>{completed_count} completed tasks</i>")
+
+    return lines
+
+
+def _format_todo_item(todo: dict, inline: bool = False) -> str:
+    """Format a single todo item."""
+    content = todo.get("content", "")
+    status = todo.get("status", "pending")
+
+    if status == "completed":
+        symbol = TODO_COMPLETED
+    elif status == "in_progress":
+        symbol = TODO_IN_PROGRESS
+        active_form = todo.get("activeForm")
+        if active_form:
+            content = active_form
+    else:
+        symbol = TODO_PENDING
+
+    if inline:
+        return f"{symbol} {escape_html(content)}"
+    return f"{symbol} {escape_html(content)}"
 
 
 def format_code_block(content: str, context_hints: list[str] | None = None) -> str:
