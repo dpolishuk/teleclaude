@@ -70,6 +70,7 @@ mypy src/
 - `/refresh` - Rescan Claude commands for current project
 - `/help` - Show help
 - `/cancel` - Cancel current operation
+- Voice/Audio messages - Transcribed and sent to Claude with confirmation
 
 ## Configuration
 
@@ -114,6 +115,12 @@ mypy src/
 - Telegram inline buttons for tool approval (Allow/Always/Deny)
 - Always-allow list persisted per user
 - Async event-based response handling
+
+### Voice Messages
+- Send voice notes or audio files to chat with Claude
+- Transcription via OpenAI Whisper API (default: Russian)
+- Confirmation UI: Send / Edit / Cancel before sending to Claude
+- Configurable duration and file size limits
 
 ## Architecture Notes
 

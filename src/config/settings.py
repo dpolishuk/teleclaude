@@ -102,6 +102,17 @@ class DatabaseConfig:
 
 
 @dataclass
+class VoiceConfig:
+    """Voice message transcription settings."""
+
+    enabled: bool = True
+    openai_api_key: str = ""
+    max_duration_seconds: int = 600  # 10 minutes
+    max_file_size_mb: int = 20
+    language: str = "ru"  # Default Russian
+
+
+@dataclass
 class Config:
     """Main configuration."""
 
@@ -113,6 +124,7 @@ class Config:
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     mcp: MCPConfig = field(default_factory=MCPConfig)
+    voice: VoiceConfig = field(default_factory=VoiceConfig)
     telegram_token: str = ""
 
     def is_user_allowed(self, user_id: int) -> bool:
@@ -249,6 +261,15 @@ def _parse_config(data: dict[str, Any]) -> Config:
     else:
         config.database = DatabaseConfig(
             path=str(Path("~/.teleclaude/teleclaude.db").expanduser())
+        )
+
+    if "voice" in data:
+        config.voice = VoiceConfig(
+            enabled=data["voice"].get("enabled", True),
+            openai_api_key=data["voice"].get("openai_api_key", ""),
+            max_duration_seconds=data["voice"].get("max_duration_seconds", 600),
+            max_file_size_mb=data["voice"].get("max_file_size_mb", 20),
+            language=data["voice"].get("language", "ru"),
         )
 
     return config

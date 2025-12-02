@@ -214,3 +214,43 @@ async def test_handle_message_pending_command(mock_update, mock_context):
 
     # pending_command should be cleared
     assert "pending_command" not in mock_context.user_data
+
+
+@pytest.mark.asyncio
+async def test_handle_message_editing_voice_text():
+    """handle_message sends edited voice text to Claude."""
+    from src.bot.handlers import handle_message
+
+    update = MagicMock()
+    update.message = AsyncMock()
+    update.message.text = "Corrected transcript"
+    update.message.reply_text = AsyncMock(return_value=AsyncMock())
+    update.effective_chat.id = 123
+
+    context = MagicMock()
+    context.user_data = {
+        "editing_voice_text": True,
+        "pending_voice_text": "Original transcript",
+        "current_session": MagicMock(),
+    }
+    context.bot_data = {
+        "config": MagicMock(
+            streaming=MagicMock(edit_throttle_ms=1000, chunk_size=3800)
+        )
+    }
+    context.bot = AsyncMock()
+
+    # Mock _execute_claude_prompt
+    with patch("src.bot.handlers._execute_claude_prompt", new_callable=AsyncMock) as mock_execute:
+        await handle_message(update, context)
+
+        # Should clear editing flag
+        assert "editing_voice_text" not in context.user_data
+
+        # Should clear pending text
+        assert "pending_voice_text" not in context.user_data
+
+        # Should call Claude with corrected text
+        mock_execute.assert_called_once()
+        call_args = mock_execute.call_args
+        assert call_args[0][2] == "Corrected transcript"

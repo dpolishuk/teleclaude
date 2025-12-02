@@ -200,3 +200,30 @@ def build_mode_keyboard(session_id: str) -> InlineKeyboardMarkup:
     ]
 
     return InlineKeyboardMarkup(buttons)
+
+
+def build_voice_confirm_keyboard() -> InlineKeyboardMarkup:
+    """Build Send/Edit/Cancel keyboard for voice confirmation.
+
+    Returns:
+        InlineKeyboardMarkup with three buttons in one row.
+        Callback data pattern: voice:<action>
+    """
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("✅ Send", callback_data="voice:send"),
+            InlineKeyboardButton("✏️ Edit", callback_data="voice:edit"),
+            InlineKeyboardButton("❌ Cancel", callback_data="voice:cancel"),
+        ]
+    ])
+
+
+def build_voice_retry_keyboard() -> InlineKeyboardMarkup:
+    """Build Retry keyboard for failed transcription.
+
+    Returns:
+        InlineKeyboardMarkup with single Retry button.
+    """
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔄 Retry", callback_data="voice:retry")]
+    ])

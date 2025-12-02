@@ -385,6 +385,15 @@ async def handle_message(
         await _execute_claude_prompt(update, context, prompt)
         return
 
+    # Check if editing voice transcript
+    if context.user_data.get("editing_voice_text"):
+        context.user_data.pop("editing_voice_text")
+        context.user_data.pop("pending_voice_text", None)
+        context.user_data.pop("pending_voice_file_id", None)
+        # User's typed message replaces transcript
+        await _execute_claude_prompt(update, context, update.message.text)
+        return
+
     session = context.user_data.get("current_session")
 
     if not session:

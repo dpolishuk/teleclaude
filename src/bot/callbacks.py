@@ -9,6 +9,8 @@ from src.storage.repository import SessionRepository
 from src.claude.permissions import get_permission_manager
 from src.claude.sessions import scan_sessions, decode_project_name
 from src.bot.keyboards import build_session_keyboard, build_mode_keyboard, build_models_keyboard, MODELS
+from src.bot.handlers import _execute_claude_prompt
+from src.claude.streaming import escape_html
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,8 @@ async def handle_callback(
         "select_session": _handle_select_session,
         # /models command callback
         "select_model": _handle_select_model,
+        # Voice callbacks
+        "voice": _handle_voice_callback,
     }
 
     handler = handlers.get(action)
@@ -413,3 +417,93 @@ async def _handle_select_model(
         f"Current model: {value}",
         reply_markup=keyboard
     )
+
+
+async def _handle_voice_callback(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
+) -> None:
+    """Route voice callbacks to specific handlers."""
+    if value == "send":
+        await _handle_voice_send(update, context)
+    elif value == "edit":
+        await _handle_voice_edit(update, context)
+    elif value == "cancel":
+        await _handle_voice_cancel(update, context)
+    elif value == "retry":
+        await _handle_voice_retry(update, context)
+    else:
+        query = update.callback_query
+        await query.edit_message_text(f"❓ Unknown voice action: {value}")
+
+
+async def _handle_voice_send(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle voice send - send transcript to Claude."""
+    query = update.callback_query
+
+    text = context.user_data.pop("pending_voice_text", None)
+    context.user_data.pop("pending_voice_file_id", None)
+
+    if not text:
+        await query.edit_message_text("❌ No pending voice message.")
+        return
+
+    # Show transcript without buttons
+    await query.edit_message_text(
+        f"🎤 <i>{escape_html(text)}</i>",
+        parse_mode="HTML",
+    )
+
+    # Execute Claude prompt
+    await _execute_claude_prompt(update, context, text)
+
+
+async def _handle_voice_edit(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle voice edit - prompt user to type correction."""
+    query = update.callback_query
+
+    text = context.user_data.get("pending_voice_text", "")
+
+    # Set flag so next text message replaces transcript
+    context.user_data["editing_voice_text"] = True
+
+    await query.edit_message_text(
+        f"🎤 Current transcript:\n<i>{escape_html(text)}</i>\n\n"
+        "Type your corrected message:",
+        parse_mode="HTML",
+    )
+
+
+async def _handle_voice_cancel(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle voice cancel - discard transcript."""
+    query = update.callback_query
+
+    context.user_data.pop("pending_voice_text", None)
+    context.user_data.pop("pending_voice_file_id", None)
+
+    await query.edit_message_text("🚫 Voice message cancelled.")
+
+
+async def _handle_voice_retry(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Handle voice retry - re-transcribe stored file."""
+    query = update.callback_query
+
+    file_id = context.user_data.get("pending_voice_file_id")
+    if not file_id:
+        await query.edit_message_text("❌ No voice message to retry.")
+        return
+
+    # Import here to avoid circular import
+    from src.voice.handler import _process_audio
+
+    await query.edit_message_text("🎤 Retrying transcription...")
+
+    # Re-process with stored file_id (duration/size already validated)
+    await _process_audio(update, context, file_id, duration=None, file_size=None)

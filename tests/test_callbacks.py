@@ -1,6 +1,6 @@
 """Test callback handlers."""
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from src.bot.callbacks import handle_callback, parse_callback_data
 
 
@@ -75,3 +75,85 @@ async def test_handle_callback_project_selection(mock_update, mock_context):
     await handle_callback(mock_update, mock_context)
 
     mock_update.callback_query.answer.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_voice_send_callback():
+    """voice:send callback sends transcript to Claude."""
+    from src.bot.callbacks import handle_callback
+
+    update = MagicMock()
+    update.callback_query = AsyncMock()
+    update.callback_query.data = "voice:send"
+    update.callback_query.answer = AsyncMock()
+    update.callback_query.edit_message_text = AsyncMock()
+    update.effective_user.id = 12345
+
+    context = MagicMock()
+    context.user_data = {
+        "pending_voice_text": "Hello Claude",
+        "current_session": MagicMock(),
+    }
+    context.bot_data = {
+        "config": MagicMock(
+            streaming=MagicMock(edit_throttle_ms=1000, chunk_size=3800)
+        )
+    }
+
+    # Mock _execute_claude_prompt to avoid full execution
+    with patch("src.bot.callbacks._execute_claude_prompt", new_callable=AsyncMock) as mock_execute:
+        await handle_callback(update, context)
+
+        # Should have cleared pending text
+        assert "pending_voice_text" not in context.user_data
+
+        # Should call Claude with transcript
+        mock_execute.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_voice_cancel_callback():
+    """voice:cancel callback clears pending transcript."""
+    from src.bot.callbacks import handle_callback
+
+    update = MagicMock()
+    update.callback_query = AsyncMock()
+    update.callback_query.data = "voice:cancel"
+    update.callback_query.answer = AsyncMock()
+    update.callback_query.edit_message_text = AsyncMock()
+
+    context = MagicMock()
+    context.user_data = {"pending_voice_text": "Hello Claude"}
+
+    await handle_callback(update, context)
+
+    # Should have cleared pending text
+    assert "pending_voice_text" not in context.user_data
+
+    # Should show cancelled message
+    update.callback_query.edit_message_text.assert_called()
+    call_args = str(update.callback_query.edit_message_text.call_args)
+    assert "cancelled" in call_args.lower()
+
+
+@pytest.mark.asyncio
+async def test_voice_edit_callback():
+    """voice:edit callback prompts user to type correction."""
+    from src.bot.callbacks import handle_callback
+
+    update = MagicMock()
+    update.callback_query = AsyncMock()
+    update.callback_query.data = "voice:edit"
+    update.callback_query.answer = AsyncMock()
+    update.callback_query.edit_message_text = AsyncMock()
+
+    context = MagicMock()
+    context.user_data = {"pending_voice_text": "Hello Claude"}
+
+    await handle_callback(update, context)
+
+    # Should set editing flag
+    assert context.user_data.get("editing_voice_text") is True
+
+    # Should show edit prompt
+    update.callback_query.edit_message_text.assert_called()
