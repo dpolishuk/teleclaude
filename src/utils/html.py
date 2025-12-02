@@ -315,20 +315,72 @@ def smart_truncate(
         skipped = len(lines) - head_lines - tail_lines
         return "\n".join(head) + f"\n├─ ... {skipped} lines skipped ...\n" + "\n".join(tail)
 
-    # Build regions around interesting lines
-    regions: list[tuple[int, int]] = []
-    for idx in sorted(set(interesting)):
-        start = max(0, idx - context)
-        end = min(len(lines), idx + context + 1)
-        regions.append((start, end))
-
-    # Merge overlapping regions
+    # Build regions around interesting lines with dynamic context reduction
+    current_context = context
     merged: list[tuple[int, int]] = []
-    for start, end in regions:
-        if merged and start <= merged[-1][1] + 1:
-            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+
+    while current_context >= 0:
+        # Build regions with current context
+        regions: list[tuple[int, int]] = []
+        for idx in sorted(set(interesting)):
+            start = max(0, idx - current_context)
+            end = min(len(lines), idx + current_context + 1)
+            regions.append((start, end))
+
+        # Merge overlapping regions
+        merged = []
+        for start, end in regions:
+            if merged and start <= merged[-1][1] + 1:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+
+        # Calculate total lines needed (content + skip indicators)
+        total_content_lines = sum(end - start for start, end in merged)
+        skip_indicators = 0
+
+        # Count skip indicators needed
+        prev_end = 0
+        for start, end in merged:
+            if start > prev_end:
+                skip_indicators += 1
+            prev_end = end
+        if prev_end < len(lines):
+            skip_indicators += 1
+
+        total_lines = total_content_lines + skip_indicators
+
+        # If we fit within max_lines, use this result
+        if total_lines <= max_lines:
+            break
+
+        # Otherwise reduce context or select fewer regions
+        if current_context > 0:
+            current_context -= 1
         else:
-            merged.append((start, end))
+            # Context is 0, select fewer interesting regions
+            # Prioritize regions in the middle or truncate to fit
+            interesting = sorted(set(interesting))
+            if len(interesting) > 1:
+                # Remove every other region until we fit
+                interesting = interesting[::2]
+                current_context = 0  # Stay at 0 context but retry with fewer regions
+                # Rebuild with reduced interesting list
+                regions = []
+                for idx in interesting:
+                    start = max(0, idx - current_context)
+                    end = min(len(lines), idx + current_context + 1)
+                    regions.append((start, end))
+                merged = []
+                for start, end in regions:
+                    if merged and start <= merged[-1][1] + 1:
+                        merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+                    else:
+                        merged.append((start, end))
+                break
+            else:
+                # Only one region left, can't reduce further
+                break
 
     # Build output
     output_parts: list[str] = []

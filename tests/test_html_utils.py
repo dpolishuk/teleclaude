@@ -77,3 +77,29 @@ class TestSmartTruncate:
         result = smart_truncate(lines, max_lines=20, interesting=[50], context=3)
         # Should indicate how many lines skipped
         assert re.search(r"\d+ lines", result)
+
+    def test_enforces_max_lines_with_interesting(self):
+        """Output never exceeds max_lines even with many interesting regions."""
+        lines = [f"line {i}" for i in range(100)]
+        result = smart_truncate(lines, max_lines=20, interesting=[10, 30, 50, 70], context=5)
+        result_lines = result.split("\n")
+        assert len(result_lines) <= 20, f"Expected <=20 lines, got {len(result_lines)}"
+
+    def test_reduces_context_to_fit_max_lines(self):
+        """Context is reduced when regions exceed max_lines."""
+        lines = [f"line {i}" for i in range(100)]
+        # With context=5, this would exceed max_lines=15
+        result = smart_truncate(lines, max_lines=15, interesting=[10, 50], context=5)
+        result_lines = result.split("\n")
+        assert len(result_lines) <= 15
+        # Should still include the interesting lines
+        assert "line 10" in result
+        assert "line 50" in result
+
+    def test_selects_fewer_regions_if_needed(self):
+        """Selects fewer regions when context reduction isn't enough."""
+        lines = [f"line {i}" for i in range(100)]
+        # Many regions with low max_lines should reduce region count
+        result = smart_truncate(lines, max_lines=10, interesting=[5, 15, 25, 35, 45], context=2)
+        result_lines = result.split("\n")
+        assert len(result_lines) <= 10
