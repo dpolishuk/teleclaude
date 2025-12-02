@@ -1,5 +1,4 @@
 """Test todo list formatting."""
-import pytest
 from src.claude.formatting import (
     format_todos,
     TODO_ICON,
