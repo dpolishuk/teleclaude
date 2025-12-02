@@ -60,3 +60,78 @@ async def test_transcription_service_transcribe():
     assert result.text == "Transcribed text"
     assert result.duration_seconds == 10.5
     assert result.language == "ru"
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_no_session():
+    """handle_voice returns error when no session."""
+    from src.voice.handler import handle_voice
+
+    update = MagicMock()
+    update.message = AsyncMock()
+    update.message.voice = MagicMock(file_id="abc", duration=10, file_size=1000)
+    update.message.reply_text = AsyncMock()
+
+    context = MagicMock()
+    context.user_data = {}
+    context.bot_data = {"config": MagicMock()}
+
+    await handle_voice(update, context)
+
+    update.message.reply_text.assert_called_once()
+    call_args = str(update.message.reply_text.call_args)
+    assert "No active session" in call_args
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_exceeds_duration():
+    """handle_voice returns error when duration exceeds limit."""
+    from src.voice.handler import handle_voice
+
+    update = MagicMock()
+    update.message = AsyncMock()
+    update.message.voice = MagicMock(file_id="abc", duration=700, file_size=1000)
+    update.message.reply_text = AsyncMock()
+
+    context = MagicMock()
+    context.user_data = {"current_session": MagicMock()}
+    context.bot_data = {
+        "config": MagicMock(
+            voice=MagicMock(max_duration_seconds=600, max_file_size_mb=20)
+        )
+    }
+
+    await handle_voice(update, context)
+
+    update.message.reply_text.assert_called_once()
+    call_args = str(update.message.reply_text.call_args)
+    assert "too long" in call_args.lower()
+
+
+@pytest.mark.asyncio
+async def test_handle_voice_exceeds_file_size():
+    """handle_voice returns error when file size exceeds limit."""
+    from src.voice.handler import handle_voice
+
+    update = MagicMock()
+    update.message = AsyncMock()
+    update.message.voice = MagicMock(
+        file_id="abc",
+        duration=10,
+        file_size=25 * 1024 * 1024  # 25MB
+    )
+    update.message.reply_text = AsyncMock()
+
+    context = MagicMock()
+    context.user_data = {"current_session": MagicMock()}
+    context.bot_data = {
+        "config": MagicMock(
+            voice=MagicMock(max_duration_seconds=600, max_file_size_mb=20)
+        )
+    }
+
+    await handle_voice(update, context)
+
+    update.message.reply_text.assert_called_once()
+    call_args = str(update.message.reply_text.call_args)
+    assert "too large" in call_args.lower()
