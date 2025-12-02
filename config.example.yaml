@@ -34,6 +34,12 @@ streaming:
   edit_throttle_ms: 1000
   chunk_size: 3800
 
+# MCP Settings
+mcp:
+  enabled: true
+  auto_load: true
+  # config_path: ~/.teleclaude/.mcp.json
+
 # Database
 database:
   path: ~/.teleclaude/teleclaude.db

@@ -9,7 +9,11 @@ A personal Telegram bot that brings Claude Code's agentic coding capabilities to
 
 ## Architecture Overview
 
+The following mind map provides a high-level breakdown of the bot's internal components:
+
 ![TeleClaude Architecture](assets/architecture_mindmap.png)
+
+The system data flow and component interaction are illustrated below:
 
 ```mermaid
 flowchart TB
@@ -273,10 +277,57 @@ Open your bot in Telegram and send `/start`.
 | `/refresh` | Rescan Claude commands |
 | `/mcp` | Manage MCP servers |
 
+## MCP Support
+
+TeleClaude supports the [Model Context Protocol (MCP)](https://modelcontextprotocol.io), allowing you to connect external tools and data sources.
+
+### Configuration
+
+Create a file at `~/.teleclaude/.mcp.json` (or `~/.mcp.json`) with your server definitions:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
+    },
+    "git": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "/path/to/repo"]
+    },
+    "remote-server": {
+      "type": "http",
+      "url": "https://mcp.example.com/sse",
+      "headers": {
+        "Authorization": "Bearer token"
+      }
+    }
+  }
+}
+```
+
+### Management
+
+Use the `/mcp` command to view server status:
+- **Online** (🟢): Connected and ready
+- **Offline** (🔴): Not connected or crashed
+- **Error** (⚠️): Configuration or connection error
+
+You can also specify a custom config path in `config.yaml`:
+
+```yaml
+mcp:
+  config_path: "/path/to/my-mcp-config.json"
+  auto_load: true
+```
+
 ## Inline Annotations
 
 | Icon | Tool | Format |
-|------|------|--------|
+|------|--------|--------|
 | 📁 | Read | `[📁 path]` |
 | 📝 | Edit/Write | `[📝 path +add/-del]` |
 | ⚡ | Bash | `[⚡ command]` |
