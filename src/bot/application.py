@@ -10,6 +10,7 @@ from telegram.ext import (
 from src.config.settings import Config
 from src.commands import CommandRegistry
 from src.mcp import MCPManager
+from src.voice import TranscriptionService, handle_voice, handle_audio
 from .middleware import auth_middleware
 from .handlers import (
     start,
@@ -52,6 +53,16 @@ async def post_init(application: Application) -> None:
 
     enabled_count = len(mcp_manager.config.get_enabled_servers())
     logger.info(f"MCP manager initialized: {len(mcp_manager.list_servers())} servers, {enabled_count} enabled")
+
+    # Initialize transcription service if voice enabled
+    if config.voice.enabled and config.voice.openai_api_key:
+        application.bot_data["transcription_service"] = TranscriptionService(
+            api_key=config.voice.openai_api_key,
+            default_language=config.voice.language,
+        )
+        logger.info("Voice transcription service initialized")
+    elif config.voice.enabled:
+        logger.warning("Voice enabled but no OpenAI API key configured")
 
 
 def create_application(config: Config) -> Application:
@@ -105,6 +116,21 @@ def create_application(config: Config) -> Application:
             auth_middleware(handle_message),
         )
     )
+
+    # Voice message handlers (if enabled)
+    if config.voice.enabled:
+        app.add_handler(
+            MessageHandler(
+                filters.VOICE,
+                auth_middleware(handle_voice),
+            )
+        )
+        app.add_handler(
+            MessageHandler(
+                filters.AUDIO,
+                auth_middleware(handle_audio),
+            )
+        )
 
     # Dynamic Claude command handler (catch-all for unknown commands)
     app.add_handler(
