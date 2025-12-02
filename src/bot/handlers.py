@@ -468,8 +468,11 @@ async def _execute_claude_prompt(
                             # Update status with dynamic message
                             current_tool_status = format_status(block.name, block.input or {})
 
+                            # Debug: log tool name
+                            logger.info(f"Tool call: {block.name}")
+
                             # Capture TodoWrite calls and update todo message
-                            if block.name.lower() == "todowrite":
+                            if block.name.lower() == "todowrite" or block.name == "TodoWrite":
                                 todos_input = block.input or {}
                                 if "todos" in todos_input:
                                     current_todos = todos_input["todos"]

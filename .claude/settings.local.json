@@ -69,7 +69,11 @@
       "Bash(killall:*)",
       "Bash(python -c \"from src.claude.permissions import get_permission_manager, can_use_tool_callback; from src.claude.client import TeleClaudeClient; from src.bot.callbacks import handle_callback; print(''Imports OK'')\")",
       "Bash(xargs:*)",
-      "mcp__plugin_exa-mcp-server_exa__get_code_context_exa"
+      "mcp__plugin_exa-mcp-server_exa__get_code_context_exa",
+      "Bash(curl -s \"https://api.telegram.org/bot***REMOVED***/getMyCommands\")",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)"
     ]
   },
   "enabledMcpjsonServers": [
