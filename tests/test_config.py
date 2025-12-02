@@ -119,3 +119,37 @@ def test_config_includes_voice():
 
     assert hasattr(config, "voice")
     assert config.voice.enabled is True
+
+
+def test_parse_voice_config_from_yaml():
+    """Voice config is parsed from YAML data."""
+    from src.config.settings import _parse_config
+
+    data = {
+        "voice": {
+            "enabled": True,
+            "openai_api_key": "sk-test123",
+            "max_duration_seconds": 300,
+            "max_file_size_mb": 10,
+            "language": "en",
+        }
+    }
+
+    config = _parse_config(data)
+
+    assert config.voice.enabled is True
+    assert config.voice.openai_api_key == "sk-test123"
+    assert config.voice.max_duration_seconds == 300
+    assert config.voice.max_file_size_mb == 10
+    assert config.voice.language == "en"
+
+
+def test_parse_voice_config_uses_defaults():
+    """Voice config uses defaults when not in YAML."""
+    from src.config.settings import _parse_config
+
+    data = {}
+    config = _parse_config(data)
+
+    assert config.voice.enabled is True
+    assert config.voice.language == "ru"

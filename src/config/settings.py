@@ -263,4 +263,13 @@ def _parse_config(data: dict[str, Any]) -> Config:
             path=str(Path("~/.teleclaude/teleclaude.db").expanduser())
         )
 
+    if "voice" in data:
+        config.voice = VoiceConfig(
+            enabled=data["voice"].get("enabled", True),
+            openai_api_key=data["voice"].get("openai_api_key", ""),
+            max_duration_seconds=data["voice"].get("max_duration_seconds", 600),
+            max_file_size_mb=data["voice"].get("max_file_size_mb", 20),
+            language=data["voice"].get("language", "ru"),
+        )
+
     return config
