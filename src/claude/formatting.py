@@ -7,6 +7,8 @@ import html
 import re
 from typing import Any
 
+from src.utils.html import smart_truncate
+
 
 # Claude Code style symbol for tool calls
 TOOL_SYMBOL = "⏵"
@@ -15,6 +17,10 @@ TOOL_SYMBOL = "⏵"
 DIFF_ADD = "✅"
 DIFF_DEL = "❌"
 FILE_ICON = "📄"
+
+# Code formatting constants
+MAX_CODE_LINES = 50
+CONTEXT_LINES = 3
 
 
 def escape_html(text: str) -> str:
@@ -313,3 +319,42 @@ def format_todos(todos: list[dict]) -> str:
         lines.append(f"{symbol} {escape_html(content)}")
 
     return "\n".join(lines)
+
+
+def format_code_block(content: str, context_hints: list[str] | None = None) -> str:
+    """Format code with smart truncation around interesting regions.
+
+    Args:
+        content: Code text
+        context_hints: Patterns to search for when truncating (e.g., ["error", "TODO"])
+
+    Returns:
+        HTML-formatted code block
+    """
+    if not content.strip():
+        return "<pre></pre>"
+
+    lines = content.split("\n")
+
+    if len(lines) <= MAX_CODE_LINES:
+        return f"<pre>{escape_html(content)}</pre>"
+
+    # Find interesting line indices
+    interesting: list[int] = []
+    hints = context_hints or ["error", "Error", "Exception", "TODO", "FIXME"]
+
+    for i, line in enumerate(lines):
+        for hint in hints:
+            if hint.lower() in line.lower():
+                interesting.append(i)
+                break
+
+    # Smart truncate
+    truncated = smart_truncate(
+        lines,
+        max_lines=MAX_CODE_LINES,
+        interesting=interesting,
+        context=CONTEXT_LINES
+    )
+
+    return f"<pre>{escape_html(truncated)}</pre>"
