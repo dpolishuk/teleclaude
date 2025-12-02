@@ -191,69 +191,66 @@ stateDiagram-v2
 - **MCP Support**: Manage and use Model Context Protocol servers
 - **Dynamic Commands**: Automatically discovers Claude commands
 
-## Requirements
+## Getting Started
+
+### Prerequisites
 
 - Python 3.10+
-- Claude Code CLI installed
-- Telegram Bot Token
+- [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
+- Telegram account
 
-## Installation
+### Step 1: Create a Telegram Bot
+
+1. Open Telegram and search for [@BotFather](https://t.me/BotFather)
+2. Send `/newbot` and follow the prompts:
+   - Enter a display name (e.g., "My TeleClaude")
+   - Enter a username ending with `_bot` (e.g., `my_teleclaude_bot`)
+3. Copy the **HTTP API token** (looks like `123456789:ABCdefGHI...`)
+
+### Step 2: Get Your Telegram User ID
+
+1. Open Telegram and search for [@userinfobot](https://t.me/userinfobot)
+2. Send `/start` — it will reply with your user ID
+3. Copy the numeric ID (e.g., `123456789`)
+
+### Step 3: Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/user/teleclaude-python.git
-cd teleclaude-python
-
-# Install with Poetry
-poetry install
-
-# Or with pip
+git clone https://github.com/dpolishuk/teleclaude.git
+cd teleclaude
 pip install -r requirements.txt
 ```
 
-## Configuration
+### Step 4: Configure
 
-1. Create config directory:
 ```bash
 mkdir -p ~/.teleclaude
-```
-
-2. Copy example config:
-```bash
 cp config.example.yaml ~/.teleclaude/config.yaml
 ```
 
-3. Edit `~/.teleclaude/config.yaml`:
+Edit `~/.teleclaude/config.yaml`:
+
 ```yaml
 allowed_users:
-  - YOUR_TELEGRAM_USER_ID
+  - YOUR_TELEGRAM_USER_ID  # from Step 2
 
 projects:
-  myapp: /path/to/your/project
-
-mcp:
-  servers:
-    filesystem:
-      command: "npx"
-      args: ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/dir"]
-      enabled: true
-
+  myproject: /path/to/your/project
 ```
 
-4. Set environment variables:
+Set the bot token:
+
 ```bash
-export TELEGRAM_BOT_TOKEN=your_bot_token_here
+export TELEGRAM_BOT_TOKEN="your_token_here"  # from Step 1
 ```
 
-## Usage
+### Step 5: Run
 
 ```bash
-# Run with Poetry
-poetry run python -m src.main
-
-# Or directly
 python -m src.main
 ```
+
+Open your bot in Telegram and send `/start`.
 
 ## Commands
 
