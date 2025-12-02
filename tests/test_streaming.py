@@ -98,3 +98,38 @@ async def test_streamer_delayed_flush(streamer, mock_message):
     # Delayed flush should have executed
     assert mock_message.edit_text.call_count > initial_call_count
     assert streamer.current_text == "First Second"
+
+
+class TestStreamerFormatting:
+    """Tests for streamer formatting integration."""
+
+    @pytest.mark.asyncio
+    async def test_streamer_preserves_diff_formatting(self, mock_message):
+        """Streamer preserves pre-formatted diff content."""
+        streamer = MessageStreamer(mock_message, throttle_ms=10)
+        # Pre-formatted content (as it would come from format_diff)
+        streamer.current_text = "📄 <b>file.py</b>\n✅ <code>added line</code>"
+
+        display = streamer._get_display_text()
+
+        assert "📄" in display
+        assert "✅" in display
+        assert "<b>file.py</b>" in display
+
+    @pytest.mark.asyncio
+    async def test_streamer_truncates_long_formatted_content(self, mock_message):
+        """Long formatted content is truncated safely."""
+        streamer = MessageStreamer(mock_message, throttle_ms=10, chunk_size=200)
+        # Long pre-formatted content
+        lines = ["📄 <b>file.py</b>"] + [f"✅ <code>line {i}</code>" for i in range(50)]
+        streamer.current_text = "\n".join(lines)
+
+        display = streamer._get_display_text()
+
+        assert len(display) <= 300  # chunk_size + buffer for tags
+        # Should have truncation indicator
+        assert "[...]" in display
+        # Should preserve emoji formatting in visible content
+        assert "✅" in display
+        # <b> tags should be balanced (from header)
+        assert display.count("<b>") == display.count("</b>")
