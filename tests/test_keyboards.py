@@ -214,3 +214,39 @@ def test_build_mode_keyboard_creates_fork_and_continue_buttons():
     assert "continue" in continue_button.text.lower()
     assert "same" in continue_button.text.lower()
     assert continue_button.callback_data == "resume_mode:session123:continue"
+
+
+def test_build_voice_confirm_keyboard():
+    """Voice confirm keyboard has Send/Edit/Cancel buttons."""
+    from src.bot.keyboards import build_voice_confirm_keyboard
+
+    keyboard = build_voice_confirm_keyboard()
+
+    # Should have one row with three buttons
+    assert len(keyboard.inline_keyboard) == 1
+    row = keyboard.inline_keyboard[0]
+    assert len(row) == 3
+
+    # Check button labels and callback data
+    assert "Send" in row[0].text
+    assert row[0].callback_data == "voice:send"
+
+    assert "Edit" in row[1].text
+    assert row[1].callback_data == "voice:edit"
+
+    assert "Cancel" in row[2].text
+    assert row[2].callback_data == "voice:cancel"
+
+
+def test_build_voice_retry_keyboard():
+    """Voice retry keyboard has Retry button."""
+    from src.bot.keyboards import build_voice_retry_keyboard
+
+    keyboard = build_voice_retry_keyboard()
+
+    assert len(keyboard.inline_keyboard) == 1
+    row = keyboard.inline_keyboard[0]
+    assert len(row) == 1
+
+    assert "Retry" in row[0].text
+    assert row[0].callback_data == "voice:retry"
