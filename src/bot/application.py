@@ -10,7 +10,6 @@ from telegram.ext import (
 from src.config.settings import Config
 from src.commands import CommandRegistry
 from src.mcp import MCPManager
-from src.voice import TranscriptionService, handle_voice, handle_audio
 from .middleware import auth_middleware
 from .handlers import (
     start,
@@ -56,6 +55,7 @@ async def post_init(application: Application) -> None:
 
     # Initialize transcription service if voice enabled
     if config.voice.enabled and config.voice.openai_api_key:
+        from src.voice import TranscriptionService
         application.bot_data["transcription_service"] = TranscriptionService(
             api_key=config.voice.openai_api_key,
             default_language=config.voice.language,
@@ -119,6 +119,7 @@ def create_application(config: Config) -> Application:
 
     # Voice message handlers (if enabled)
     if config.voice.enabled:
+        from src.voice import handle_voice, handle_audio
         app.add_handler(
             MessageHandler(
                 filters.VOICE,
