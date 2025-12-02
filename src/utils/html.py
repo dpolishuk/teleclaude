@@ -284,3 +284,65 @@ def detect_content_type(text: str) -> Literal["diff", "code", "plain"]:
         return "code"
 
     return "plain"
+
+
+def smart_truncate(
+    lines: list[str],
+    max_lines: int,
+    interesting: list[int],
+    context: int = 3
+) -> str:
+    """Truncate showing context around interesting line numbers.
+
+    Args:
+        lines: List of text lines
+        max_lines: Maximum lines to output
+        interesting: Line indices (0-based) to show context around
+        context: Lines before/after each interesting line
+
+    Returns:
+        Truncated text with skip indicators
+    """
+    if len(lines) <= max_lines:
+        return "\n".join(lines)
+
+    if not interesting:
+        # Head + tail fallback
+        head_lines = max_lines * 3 // 5  # 60% head
+        tail_lines = max_lines - head_lines - 1  # Rest for tail + skip line
+        head = lines[:head_lines]
+        tail = lines[-tail_lines:] if tail_lines > 0 else []
+        skipped = len(lines) - head_lines - tail_lines
+        return "\n".join(head) + f"\n├─ ... {skipped} lines skipped ...\n" + "\n".join(tail)
+
+    # Build regions around interesting lines
+    regions: list[tuple[int, int]] = []
+    for idx in sorted(set(interesting)):
+        start = max(0, idx - context)
+        end = min(len(lines), idx + context + 1)
+        regions.append((start, end))
+
+    # Merge overlapping regions
+    merged: list[tuple[int, int]] = []
+    for start, end in regions:
+        if merged and start <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+        else:
+            merged.append((start, end))
+
+    # Build output
+    output_parts: list[str] = []
+    prev_end = 0
+
+    for start, end in merged:
+        if start > prev_end:
+            skipped = start - prev_end
+            output_parts.append(f"├─ ... {skipped} lines skipped ...")
+        output_parts.extend(lines[start:end])
+        prev_end = end
+
+    if prev_end < len(lines):
+        skipped = len(lines) - prev_end
+        output_parts.append(f"└─ ... {skipped} lines skipped ...")
+
+    return "\n".join(output_parts)
