@@ -96,3 +96,26 @@ database:
 
     assert "~" not in config.database.path
     assert config.database.path.startswith(str(Path.home()))
+
+
+def test_voice_config_defaults():
+    """VoiceConfig has correct defaults."""
+    from src.config.settings import VoiceConfig
+
+    config = VoiceConfig()
+
+    assert config.enabled is True
+    assert config.openai_api_key == ""
+    assert config.max_duration_seconds == 600
+    assert config.max_file_size_mb == 20
+    assert config.language == "ru"
+
+
+def test_config_includes_voice():
+    """Config includes voice configuration."""
+    from src.config.settings import Config
+
+    config = Config()
+
+    assert hasattr(config, "voice")
+    assert config.voice.enabled is True

@@ -102,6 +102,17 @@ class DatabaseConfig:
 
 
 @dataclass
+class VoiceConfig:
+    """Voice message transcription settings."""
+
+    enabled: bool = True
+    openai_api_key: str = ""
+    max_duration_seconds: int = 600  # 10 minutes
+    max_file_size_mb: int = 20
+    language: str = "ru"  # Default Russian
+
+
+@dataclass
 class Config:
     """Main configuration."""
 
@@ -113,6 +124,7 @@ class Config:
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     mcp: MCPConfig = field(default_factory=MCPConfig)
+    voice: VoiceConfig = field(default_factory=VoiceConfig)
     telegram_token: str = ""
 
     def is_user_allowed(self, user_id: int) -> bool:
