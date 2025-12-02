@@ -1,6 +1,5 @@
 """Test code block formatting."""
-import pytest
-from src.claude.formatting import format_code_block, MAX_CODE_LINES
+from src.claude.formatting import format_code_block
 
 
 class TestFormatCodeBlock:
