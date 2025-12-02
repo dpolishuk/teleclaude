@@ -4,11 +4,17 @@ Clean, professional formatting that mimics Claude Code CLI output.
 Uses minimal symbols and monospace formatting for a terminal-like feel.
 """
 import html
+import re
 from typing import Any
 
 
 # Claude Code style symbol for tool calls
 TOOL_SYMBOL = "⏵"
+
+# Diff formatting constants
+DIFF_ADD = "✅"
+DIFF_DEL = "❌"
+FILE_ICON = "📄"
 
 
 def escape_html(text: str) -> str:
@@ -212,6 +218,61 @@ def format_status(tool_name: str, inputs: dict[str, Any]) -> str:
         return "MCP…"
 
     return f"{tool_name}…"
+
+
+def format_diff(content: str) -> str:
+    """Format unified diff with emoji indicators.
+
+    Args:
+        content: Unified diff text
+
+    Returns:
+        HTML-formatted diff with ✅/❌ markers
+    """
+    lines = content.split("\n")
+    output: list[str] = []
+    current_file: str | None = None
+
+    for line in lines:
+        # Git diff header - extract filename
+        if line.startswith("diff --git "):
+            match = re.search(r"b/(.+)$", line)
+            if match:
+                current_file = match.group(1)
+                output.append(f"\n{FILE_ICON} <b>{escape_html(current_file)}</b>\n")
+            continue
+
+        # Skip --- and +++ headers (already got filename)
+        if line.startswith("--- ") or line.startswith("+++ "):
+            continue
+
+        # Hunk header
+        if line.startswith("@@ ") and " @@" in line:
+            match = re.search(r"@@ -(\d+)", line)
+            line_num = match.group(1) if match else "?"
+            output.append(f"<code>── line {line_num} ──</code>")
+            continue
+
+        # Added line (but not +++)
+        if line.startswith("+") and not line.startswith("+++"):
+            output.append(f"{DIFF_ADD} <code>{escape_html(line[1:])}</code>")
+            continue
+
+        # Removed line (but not ---)
+        if line.startswith("-") and not line.startswith("---"):
+            output.append(f"{DIFF_DEL} <code>{escape_html(line[1:])}</code>")
+            continue
+
+        # Context line
+        if line.startswith(" "):
+            output.append(f"   <code>{escape_html(line[1:])}</code>")
+            continue
+
+        # Other lines (empty, etc)
+        if line.strip():
+            output.append(f"<code>{escape_html(line)}</code>")
+
+    return "\n".join(output)
 
 
 # Todo status symbols
