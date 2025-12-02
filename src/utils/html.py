@@ -5,6 +5,7 @@ All messages should use HTML parse_mode for consistency.
 """
 import html as html_lib
 import re
+from typing import Literal
 
 
 # Supported HTML tags for Telegram
@@ -236,3 +237,50 @@ def truncate(text: str, max_len: int = 4096, suffix: str = "...") -> str:
     if len(text) <= max_len:
         return text
     return text[:max_len - len(suffix)] + suffix
+
+
+def detect_content_type(text: str) -> Literal["diff", "code", "plain"]:
+    """Detect if content is a diff, code block, or plain text.
+
+    Args:
+        text: Content to analyze
+
+    Returns:
+        "diff" for unified diffs, "code" for code blocks, "plain" otherwise
+    """
+    lines = text.split("\n")
+
+    # Check for diff indicators
+    diff_markers = 0
+    for line in lines[:20]:  # Check first 20 lines
+        # Git diff header
+        if line.startswith("diff --git "):
+            return "diff"
+        # Unified diff file markers
+        if line.startswith("--- ") or line.startswith("+++ "):
+            diff_markers += 1
+        # Hunk header
+        if line.startswith("@@ ") and " @@" in line:
+            return "diff"
+        # Added/removed lines (but not ++ or --)
+        if re.match(r"^[+-][^+-]", line):
+            diff_markers += 1
+
+    if diff_markers >= 2:
+        return "diff"
+
+    # Check for code indicators
+    code_indicators = 0
+    for line in lines[:20]:
+        # Common code patterns
+        if re.match(r"^\s{2,}", line):  # Indentation
+            code_indicators += 1
+        if re.search(r"(def |class |function |const |let |var |import |from )", line):
+            code_indicators += 2
+        if re.search(r"[{}\[\]();]$", line.rstrip()):
+            code_indicators += 1
+
+    if code_indicators >= 3:
+        return "code"
+
+    return "plain"
