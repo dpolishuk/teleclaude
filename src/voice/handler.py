@@ -64,31 +64,44 @@ async def _process_audio(
     """
     config = context.bot_data["config"]
 
+    # Get reply method (works for both message and callback contexts)
+    reply_target = update.message or update.callback_query.message
+
     # Check session exists
     session = context.user_data.get("current_session")
     if not session:
-        await update.message.reply_text("❌ No active session. Use /new to start one.")
+        await reply_target.reply_text("❌ No active session. Use /new to start one.")
         return
 
-    # Validate duration
+    # Validate duration (skip if None - e.g., on retry)
     if duration and duration > config.voice.max_duration_seconds:
-        await update.message.reply_text(
+        await reply_target.reply_text(
             f"❌ Audio too long ({duration}s). Max: {config.voice.max_duration_seconds}s"
         )
         return
 
-    # Validate file size
+    # Validate file size (skip if None - e.g., on retry)
     max_bytes = config.voice.max_file_size_mb * 1024 * 1024
     if file_size and file_size > max_bytes:
-        await update.message.reply_text(
+        await reply_target.reply_text(
             f"❌ File too large. Max: {config.voice.max_file_size_mb}MB"
         )
         return
 
+    # Check transcription service is configured before downloading
+    service = context.bot_data.get("transcription_service")
+    if not service:
+        await reply_target.reply_text(
+            "❌ Voice transcription not configured. "
+            "Set openai_api_key in voice config."
+        )
+        return
+
     # Show transcribing status
-    status_msg = await update.message.reply_text("🎤 Transcribing...")
+    status_msg = await reply_target.reply_text("🎤 Transcribing...")
 
     # Download file to temp location
+    temp_path = None
     try:
         file = await context.bot.get_file(file_id)
 
@@ -97,15 +110,6 @@ async def _process_audio(
             temp_path = Path(tmp.name)
 
         await file.download_to_drive(temp_path)
-
-        # Get transcription service
-        service = context.bot_data.get("transcription_service")
-        if not service:
-            await status_msg.edit_text(
-                "❌ Voice transcription not configured. "
-                "Set openai_api_key in voice config."
-            )
-            return
 
         # Transcribe
         try:
@@ -143,5 +147,5 @@ async def _process_audio(
 
     finally:
         # Cleanup temp file
-        if temp_path.exists():
+        if temp_path and temp_path.exists():
             temp_path.unlink()

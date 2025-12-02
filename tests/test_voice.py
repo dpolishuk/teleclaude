@@ -135,3 +135,32 @@ async def test_handle_voice_exceeds_file_size():
     update.message.reply_text.assert_called_once()
     call_args = str(update.message.reply_text.call_args)
     assert "too large" in call_args.lower()
+
+
+@pytest.mark.asyncio
+async def test_process_audio_works_with_callback_context():
+    """_process_audio works with callback query context (for retry)."""
+    from src.voice.handler import _process_audio
+
+    # Simulate callback context (no update.message, only update.callback_query)
+    update = MagicMock()
+    update.message = None
+    update.callback_query = MagicMock()
+    update.callback_query.message = AsyncMock()
+    update.callback_query.message.reply_text = AsyncMock()
+
+    context = MagicMock()
+    context.user_data = {"current_session": MagicMock()}
+    context.bot_data = {
+        "config": MagicMock(
+            voice=MagicMock(max_duration_seconds=600, max_file_size_mb=20)
+        ),
+        "transcription_service": None,  # Not configured
+    }
+
+    await _process_audio(update, context, file_id="abc", duration=None, file_size=None)
+
+    # Should use callback_query.message to reply
+    update.callback_query.message.reply_text.assert_called_once()
+    call_args = str(update.callback_query.message.reply_text.call_args)
+    assert "not configured" in call_args.lower()
