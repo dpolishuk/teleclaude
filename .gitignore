@@ -42,3 +42,6 @@ Thumbs.db
 # User config
 config.yaml
 .mcp.json
+
+# Claude Code local settings (may contain secrets)
+.claude/settings.local.json
