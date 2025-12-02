@@ -1,5 +1,5 @@
 """Test diff formatting."""
-from src.claude.formatting import format_diff, DIFF_ADD, DIFF_DEL, FILE_ICON
+from src.claude.formatting import format_diff, format_tool_result, DIFF_ADD, DIFF_DEL, FILE_ICON
 
 
 class TestFormatDiff:
@@ -61,3 +61,31 @@ diff --git a/file2.py b/file2.py
         result = format_diff(diff)
         assert "<script>" not in result
         assert "&lt;script&gt;" in result
+
+
+class TestFormatToolResultRouting:
+    """Tests for format_tool_result content routing."""
+
+    def test_routes_diff_content(self):
+        """Diff content uses format_diff."""
+        content = "diff --git a/file.py b/file.py\n+added line"
+        result = format_tool_result(content)
+        assert DIFF_ADD in result  # Uses diff formatter
+
+    def test_routes_code_content(self):
+        """Code content uses format_code_block."""
+        content = "def foo():\n    return 42\n\nclass Bar:\n    pass"
+        result = format_tool_result(content)
+        assert "<pre>" in result
+
+    def test_error_flag_still_works(self):
+        """Error flag adds error indicator."""
+        content = "Something failed"
+        result = format_tool_result(content, is_error=True)
+        assert "✗" in result
+
+    def test_plain_text_in_pre(self):
+        """Plain text wrapped in pre."""
+        content = "Just some output text"
+        result = format_tool_result(content)
+        assert "<pre>" in result

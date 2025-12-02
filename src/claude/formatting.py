@@ -7,7 +7,7 @@ import html
 import re
 from typing import Any
 
-from src.utils.html import smart_truncate
+from src.utils.html import smart_truncate, detect_content_type
 
 
 # Claude Code style symbol for tool calls
@@ -117,7 +117,7 @@ def _truncate(text: str, max_len: int) -> str:
 def format_tool_result(content: str | list | None, is_error: bool = False) -> str:
     """Format a tool result in minimalistic style.
 
-    Shows results in monospace, clean and readable.
+    Routes content to appropriate formatter based on content type detection.
 
     Args:
         content: Tool result content
@@ -146,25 +146,39 @@ def format_tool_result(content: str | list | None, is_error: bool = False) -> st
     if not result_text:
         return ""
 
-    # Smart truncation for long results
-    max_len = 1500
-    if len(result_text) > max_len:
-        lines = result_text.split("\n")
-        truncated = result_text[:max_len]
-        last_newline = truncated.rfind("\n")
-        if last_newline > max_len // 2:
-            truncated = truncated[:last_newline]
-        remaining = len(lines) - truncated.count("\n") - 1
-        if remaining > 0:
-            result_text = f"{truncated}\n⋯ {remaining} more lines"
-        else:
-            result_text = f"{truncated}…"
+    # Detect content type and route to formatter
+    content_type = detect_content_type(result_text)
 
-    # Format output
     if is_error:
-        return f"\n<pre>✗ {escape_html(result_text)}</pre>\n"
-    else:
-        return f"\n<pre>{escape_html(result_text)}</pre>\n"
+        # Error output - simple pre with error marker
+        truncated = _truncate_result(result_text, 1500)
+        return f"\n<pre>✗ {escape_html(truncated)}</pre>\n"
+
+    if content_type == "diff":
+        return f"\n{format_diff(result_text)}\n"
+
+    if content_type == "code":
+        return f"\n{format_code_block(result_text)}\n"
+
+    # Plain text - use simple pre
+    truncated = _truncate_result(result_text, 1500)
+    return f"\n<pre>{escape_html(truncated)}</pre>\n"
+
+
+def _truncate_result(text: str, max_len: int) -> str:
+    """Truncate result text with line-aware indicator."""
+    if len(text) <= max_len:
+        return text
+
+    lines = text.split("\n")
+    truncated = text[:max_len]
+    last_newline = truncated.rfind("\n")
+    if last_newline > max_len // 2:
+        truncated = truncated[:last_newline]
+    remaining = len(lines) - truncated.count("\n") - 1
+    if remaining > 0:
+        return f"{truncated}\n⋯ {remaining} more lines"
+    return f"{truncated}…"
 
 
 def format_status(tool_name: str, inputs: dict[str, Any]) -> str:
