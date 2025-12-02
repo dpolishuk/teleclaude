@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "perplexity-mcp": {
+      "type": "stdio",
+      "command": "perplexity-mcp",
+      "args": [
+        "--model",
+        "sonar-pro",
+        "--reasoning-model",
+        "sonar-reasoning-pro"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "your-perplexity-api-key-here"
+      }
+    },
+    "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "your-context7-api-key-here"
+      }
+    },
+    "serena": {
+    	"type": "http",
+	"url": "http://127.0.0.1:9231/mcp"
+    },
+    "telebrain": {
+      "type": "http",
+      "url": "http://127.0.0.1:8000/mcp/"
+    }
+  }
+}
