@@ -110,6 +110,9 @@ mypy src/
 - Compact inline format: `⏵ Tool filename` or `⏵ Command args`
 - Smart HTML tag balancing for streamed messages
 - Tool result formatting with error indicators
+- **Code diffs**: Unified diff style with ✅ (added) / ❌ (removed) emoji indicators
+- **Smart truncation**: Long code shows context around errors, matches, and interesting regions
+- **Hierarchical todos**: Tree structure with 📋 progress header, compact mode for >10 items
 
 ### Interactive Permissions
 - Telegram inline buttons for tool approval (Allow/Always/Deny)
