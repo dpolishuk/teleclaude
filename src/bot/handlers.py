@@ -17,6 +17,7 @@ from src.storage.database import get_session
 from src.storage.repository import SessionRepository
 from src.claude import TeleClaudeClient, MessageStreamer
 from src.claude.streaming import escape_html
+from chatgpt_md_converter import telegram_format
 from src.claude.formatting import format_tool_call, format_tool_result, format_status, format_todos
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
@@ -469,7 +470,7 @@ async def _execute_claude_prompt(
                 if isinstance(message, AssistantMessage):
                     for block in message.content:
                         if isinstance(block, TextBlock):
-                            await streamer.append_text(escape_html(block.text))
+                            await streamer.append_text(telegram_format(block.text))
                         elif isinstance(block, ToolUseBlock):
                             # Claude Code style: compact inline tool call
                             tool_info = format_tool_call(block.name, block.input or {})
