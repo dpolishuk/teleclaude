@@ -20,6 +20,7 @@ def test_create_application_returns_application(mock_config):
         mock_builder = MagicMock()
         MockApp.builder.return_value = mock_builder
         mock_builder.token.return_value = mock_builder
+        mock_builder.persistence.return_value = mock_builder
         mock_builder.post_init.return_value = mock_builder
         mock_builder.concurrent_updates.return_value = mock_builder
         mock_builder.build.return_value = MagicMock()
@@ -28,6 +29,7 @@ def test_create_application_returns_application(mock_config):
 
         MockApp.builder.assert_called_once()
         mock_builder.token.assert_called_once_with("test_token")
+        mock_builder.persistence.assert_called_once()
         mock_builder.build.assert_called_once()
 
 
@@ -39,6 +41,7 @@ def test_create_application_stores_config(mock_config):
         mock_builder = MagicMock()
         MockApp.builder.return_value = mock_builder
         mock_builder.token.return_value = mock_builder
+        mock_builder.persistence.return_value = mock_builder
         mock_builder.post_init.return_value = mock_builder
         mock_builder.concurrent_updates.return_value = mock_builder
         mock_builder.build.return_value = mock_app
@@ -56,6 +59,7 @@ def test_create_application_has_command_registry(mock_config):
         mock_builder = MagicMock()
         mock_app = MagicMock()
         mock_builder.token.return_value = mock_builder
+        mock_builder.persistence.return_value = mock_builder
         mock_builder.post_init.return_value = mock_builder
         mock_builder.concurrent_updates.return_value = mock_builder
         mock_builder.build.return_value = mock_app

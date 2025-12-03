@@ -1,9 +1,12 @@
 """Telegram bot application setup."""
+from pathlib import Path
 from telegram.ext import (
     Application,
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    PicklePersistence,
+    PersistenceInput,
     filters,
 )
 
@@ -67,6 +70,22 @@ async def post_init(application: Application) -> None:
 
 def create_application(config: Config) -> Application:
     """Create and configure Telegram Application."""
+    # Ensure persistence directory exists
+    persistence_path = Path(config.persistence_path)
+    persistence_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Configure persistence for user_data across restarts
+    persistence = PicklePersistence(
+        filepath=str(persistence_path),
+        store_data=PersistenceInput(
+            bot_data=False,  # We manage bot_data ourselves
+            chat_data=False,
+            user_data=True,  # Persist session IDs and preferences
+            callback_data=False,
+        ),
+        update_interval=30,  # Save every 30 seconds
+    )
+
     # Enable concurrent_updates to allow callback queries to be processed
     # while another handler (like Claude message processing) is running.
     # This is critical for permission prompts to work - without it,
@@ -74,6 +93,7 @@ def create_application(config: Config) -> Application:
     app = (
         Application.builder()
         .token(config.telegram_token)
+        .persistence(persistence)
         .post_init(post_init)
         .concurrent_updates(True)
         .build()
