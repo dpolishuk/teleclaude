@@ -64,3 +64,48 @@ async def test_session_id_stored_in_user_data():
     # Also verify project_path is stored
     assert "current_project_path" in context.user_data
     assert context.user_data["current_project_path"] == "/home/user/myapp"
+
+
+async def test_start_restores_existing_session():
+    """Start command restores session if user_data has session_id."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from src.bot.handlers import start
+
+    update = MagicMock()
+    update.effective_user.id = 12345
+    update.message = AsyncMock()
+    update.message.reply_text = AsyncMock()
+
+    # Simulate persisted user_data with session ID
+    context = MagicMock()
+    context.user_data = {
+        "current_session_id": "existing123",
+        "cached_claude_session_id": "claude456",
+    }
+    context.bot_data = {
+        "config": MagicMock(projects={"myapp": "/path/to/myapp"}),
+    }
+
+    mock_session = MagicMock(
+        id="existing123",
+        claude_session_id="claude456",  # Same as cached - no change
+        project_name="myapp",
+        project_path="/path/to/myapp",
+        last_active=None,
+        total_cost_usd=0.42,
+    )
+    mock_repo = MagicMock()
+    mock_repo.get_session = AsyncMock(return_value=mock_session)
+
+    with patch("src.bot.handlers.get_session") as mock_get_session, \
+         patch("src.bot.handlers.SessionRepository", return_value=mock_repo), \
+         patch("src.bot.handlers.get_session_last_message", return_value="Last message"):
+        mock_get_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        await start(update, context)
+
+    # Should send restore message, not project picker
+    update.message.reply_text.assert_called()
+    call_args = update.message.reply_text.call_args[0][0]
+    assert "restored" in call_args.lower() or "Session" in call_args

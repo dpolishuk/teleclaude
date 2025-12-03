@@ -21,7 +21,7 @@ from chatgpt_md_converter import telegram_format
 from src.claude.formatting import format_tool_call, format_tool_result, format_status, format_todos
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
-from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time
+from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time, get_session_file_path, get_session_last_message
 from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard, build_sessions_list_keyboard, build_models_keyboard, DEFAULT_MODEL
 
 
@@ -102,13 +102,100 @@ Claude commands from <code>.claude/commands/</code> appear in the / menu!
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /start command."""
+    """Handle /start command - restore session or show project picker."""
+    config = context.bot_data.get("config")
+    user_id = update.effective_user.id
+
+    # Check for restorable session from persisted user_data
+    session_id = context.user_data.get("current_session_id")
+
+    if session_id:
+        # Try to restore existing session
+        async with get_session() as db:
+            repo = SessionRepository(db)
+            session = await repo.get_session(session_id)
+
+            if session:
+                # Check if Claude session changed
+                cached_claude_id = context.user_data.get("cached_claude_session_id")
+                session_changed = (
+                    cached_claude_id is not None
+                    and session.claude_session_id is not None
+                    and cached_claude_id != session.claude_session_id
+                )
+
+                # Update user_data with current session
+                context.user_data["current_session"] = session
+                context.user_data["cached_claude_session_id"] = session.claude_session_id
+
+                # Get last message preview
+                last_message = None
+                if session.claude_session_id:
+                    # Find session file and get preview
+                    session_file = get_session_file_path(
+                        session.project_path,
+                        session.claude_session_id
+                    )
+                    if session_file:
+                        last_message = get_session_last_message(session_file)
+
+                # Format restore message
+                message = _format_restore_message(
+                    session=session,
+                    session_changed=session_changed,
+                    last_message=last_message,
+                )
+
+                await update.message.reply_text(message, parse_mode="HTML")
+                return
+
+    # No restorable session - show welcome or project picker
     user = update.effective_user
+    if not config or not config.projects:
+        await update.message.reply_text(
+            f"👋 Welcome to TeleClaude, {user.first_name}!\n\n"
+            "I'm your mobile interface to Claude Code.\n\n"
+            "Use /new to start a new session or /help for all commands."
+        )
+        return
+
+    # If projects configured, show project picker
+    keyboard = project_keyboard(config.projects)
     await update.message.reply_text(
         f"👋 Welcome to TeleClaude, {user.first_name}!\n\n"
-        "I'm your mobile interface to Claude Code.\n\n"
-        "Use /new to start a new session or /help for all commands."
+        "Select a project to get started:",
+        reply_markup=keyboard,
     )
+
+
+def _format_restore_message(
+    session,
+    session_changed: bool,
+    last_message: str | None,
+) -> str:
+    """Format session restore/changed message."""
+    if session_changed:
+        header = "⚠️ <b>Session context changed</b>\n\n"
+        header += "Your Claude session was updated externally (possibly from terminal).\n"
+        header += "Continuing with the latest state.\n\n"
+    else:
+        header = "✅ <b>Session restored</b>\n\n"
+
+    lines = [header]
+    lines.append(f"📂 Project: <code>{escape_html(session.project_name or session.project_path)}</code>")
+
+    if session.last_active:
+        lines.append(f"⏰ Last active: {relative_time(session.last_active)}")
+
+    if session.total_cost_usd > 0:
+        lines.append(f"💰 Cost: ${session.total_cost_usd:.2f}")
+
+    if last_message:
+        lines.append(f"\n💬 Last context:\n<i>\"{escape_html(last_message)}\"</i>")
+
+    lines.append("\nReady to continue. Send a message or /new for fresh session.")
+
+    return "\n".join(lines)
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
