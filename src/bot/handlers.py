@@ -25,8 +25,8 @@ from chatgpt_md_converter import telegram_format
 from src.claude.formatting import format_tool_call, format_tool_result, format_status, format_todos
 from src.utils.keyboards import project_keyboard, cancel_keyboard
 from src.commands import ClaudeCommand
-from src.claude.sessions import scan_projects, scan_sessions, encode_project_path, relative_time, get_session_file_path, get_session_last_message
-from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard, build_sessions_list_keyboard, build_models_keyboard, DEFAULT_MODEL
+from src.claude.sessions import scan_projects, scan_sessions, scan_unified_sessions, encode_project_path, relative_time, get_session_file_path, get_session_last_message
+from src.bot.keyboards import build_project_keyboard, build_session_keyboard, build_mode_keyboard, build_sessions_list_keyboard, build_unified_sessions_keyboard, build_models_keyboard, DEFAULT_MODEL
 
 
 class TypingIndicator:
@@ -253,7 +253,7 @@ async def continue_session(
 async def list_sessions(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Handle /sessions command - show Claude Code sessions for current project."""
+    """Handle /sessions command - show unified Claude Code sessions."""
     session = context.user_data.get("current_session")
 
     if not session:
@@ -262,12 +262,16 @@ async def list_sessions(
         )
         return
 
-    # Get project path and encode it for Claude Code directory lookup
     project_path = session.project_path
-    encoded_project = encode_project_path(project_path)
+    user_id = update.effective_user.id
 
-    # Scan for sessions in ~/.claude/projects/{encoded_project}/
-    sessions = scan_sessions(encoded_project)
+    # Get session IDs owned by this user (for origin detection)
+    async with get_session() as db:
+        repo = SessionRepository(db)
+        owned_ids = await repo.get_session_ids_for_project(user_id, project_path)
+
+    # Scan unified sessions from filesystem
+    sessions = scan_unified_sessions(project_path, owned_ids)
 
     if not sessions:
         await update.message.reply_text(
@@ -275,11 +279,14 @@ async def list_sessions(
         )
         return
 
-    # Build keyboard with session buttons
-    keyboard = build_sessions_list_keyboard(sessions)
+    # Build keyboard with origin icons
+    keyboard = build_unified_sessions_keyboard(sessions)
+
+    project_name = project_path.split("/")[-1]
     await update.message.reply_text(
-        f"Sessions for {project_path}:",
-        reply_markup=keyboard
+        f"\U0001F4CB Sessions for {project_name}\n\n"
+        "\U0001F4F1 = Telegram  \U0001F4BB = Terminal",
+        reply_markup=keyboard,
     )
 
 

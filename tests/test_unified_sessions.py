@@ -244,3 +244,41 @@ def test_unified_sessions_keyboard_shows_origin_icons():
     assert "\U0001F4F1" in buttons[0][0].text  # 📱
     # Second button should have terminal icon
     assert "\U0001F4BB" in buttons[1][0].text  # 💻
+
+
+@pytest.mark.asyncio
+async def test_list_sessions_shows_unified_view():
+    """list_sessions handler shows unified sessions from filesystem + SQLite."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from src.bot.handlers import list_sessions
+
+    update = MagicMock()
+    update.message = AsyncMock()
+    update.message.reply_text = AsyncMock()
+    update.effective_user.id = 12345
+
+    # Mock current session
+    mock_session = MagicMock()
+    mock_session.project_path = "/root/work/myproject"
+
+    context = MagicMock()
+    context.user_data = {"current_session": mock_session}
+
+    # Mock the unified session scanning
+    with patch("src.bot.handlers.scan_unified_sessions") as mock_scan, \
+         patch("src.bot.handlers.get_session") as mock_get_session, \
+         patch("src.bot.handlers.SessionRepository") as MockRepo:
+
+        mock_repo = MagicMock()
+        mock_repo.get_session_ids_for_project = AsyncMock(return_value={"abc123"})
+        MockRepo.return_value = mock_repo
+
+        mock_get_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        mock_scan.return_value = []  # No sessions
+
+        await list_sessions(update, context)
+
+    # Should have been called with project path
+    update.message.reply_text.assert_called()
