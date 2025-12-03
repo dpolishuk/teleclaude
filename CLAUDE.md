@@ -125,6 +125,13 @@ mypy src/
 - Confirmation UI: Send / Edit / Cancel before sending to Claude
 - Configurable duration and file size limits
 
+### Session Persistence
+- Sessions persist across bot restarts via PicklePersistence
+- On `/start`, bot restores last active session automatically
+- User preferences (model selection) are preserved
+- If Claude session changed externally (terminal), user is notified
+- Session data stored in `~/.teleclaude/bot_persistence.pickle`
+
 ## Architecture Notes
 
 - `post_init()` hook loads CommandRegistry and MCPManager at startup
