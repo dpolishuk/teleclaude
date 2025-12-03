@@ -558,6 +558,8 @@ async def _create_session(
         )
         # Store session in user_data for quick access
         context.user_data["current_session"] = session
+        context.user_data["current_session_id"] = session.id
+        context.user_data["current_project_path"] = project_path
 
     # Refresh commands for this project
     registry = context.bot_data.get("command_registry")

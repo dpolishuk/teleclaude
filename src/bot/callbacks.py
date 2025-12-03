@@ -108,6 +108,9 @@ async def _handle_project_select(
             )
             # Store session in user_data for quick access
             context.user_data["current_session"] = session
+            # Store session ID separately for persistence across restarts
+            context.user_data["current_session_id"] = session.id
+            context.user_data["current_project_path"] = project_path
 
         # Refresh commands for this project
         registry = context.bot_data.get("command_registry")
@@ -342,6 +345,9 @@ async def _handle_resume_mode(
         )
         # Store session in user_data for quick access
         context.user_data["current_session"] = session
+        # Store session ID separately for persistence across restarts
+        context.user_data["current_session_id"] = session.id
+        context.user_data["current_project_path"] = project_path
 
     # Refresh commands for this project
     registry = context.bot_data.get("command_registry")
