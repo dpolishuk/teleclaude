@@ -370,7 +370,7 @@ async def _handle_resume_mode(
 async def _handle_select_session(
     update: Update, context: ContextTypes.DEFAULT_TYPE, value: str | None
 ) -> None:
-    """Handle session selection from /sessions command - resume immediately."""
+    """Handle session selection - create record if terminal session, then resume."""
     query = update.callback_query
 
     if not value:
@@ -383,19 +383,27 @@ async def _handle_select_session(
         await query.edit_message_text("❌ No active project. Use /new first.")
         return
 
-    # Update current session with the selected Claude session_id
-    current_session.claude_session_id = value
+    user_id = update.effective_user.id
+    project_path = current_session.project_path
 
-    # Persist to database
+    # Get or create session record (claims ownership for terminal sessions)
     async with get_session() as db:
         repo = SessionRepository(db)
-        await repo.set_claude_session_id(current_session.id, value)
+        session = await repo.get_or_create_session(
+            session_id=value,
+            telegram_user_id=user_id,
+            project_path=project_path,
+        )
 
-    logger.info(f"Session selected: {value[:20]}... for project {current_session.project_path}")
+    # Update current session in user_data
+    context.user_data["current_session"] = session
+    context.user_data["current_session_id"] = session.id
+
+    logger.info(f"Session selected: {value[:20]}... for project {project_path}")
 
     await query.edit_message_text(
         f"✅ Session resumed!\n\n"
-        f"📂 Project: {current_session.project_path}\n\n"
+        f"📂 Project: {project_path}\n\n"
         "You can now continue chatting with Claude."
     )
 

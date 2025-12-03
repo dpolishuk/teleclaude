@@ -282,3 +282,38 @@ async def test_list_sessions_shows_unified_view():
 
     # Should have been called with project path
     update.message.reply_text.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_select_session_creates_record_for_terminal():
+    """Selecting terminal session creates SQLite record (claim ownership)."""
+    from unittest.mock import AsyncMock, MagicMock, patch
+    from src.bot.callbacks import _handle_select_session
+
+    update = MagicMock()
+    update.callback_query = AsyncMock()
+    update.callback_query.edit_message_text = AsyncMock()
+    update.effective_user.id = 12345
+
+    mock_session = MagicMock()
+    mock_session.project_path = "/root/work/myproject"
+
+    context = MagicMock()
+    context.user_data = {"current_session": mock_session}
+
+    mock_repo = MagicMock()
+    mock_repo.get_or_create_session = AsyncMock()
+
+    with patch("src.bot.callbacks.get_session") as mock_get_session, \
+         patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
+        mock_get_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        await _handle_select_session(update, context, "terminal-session-id")
+
+    # Should create session record
+    mock_repo.get_or_create_session.assert_called_once_with(
+        session_id="terminal-session-id",
+        telegram_user_id=12345,
+        project_path="/root/work/myproject",
+    )
