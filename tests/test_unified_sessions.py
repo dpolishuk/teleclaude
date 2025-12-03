@@ -124,3 +124,90 @@ async def test_deprecated_methods_removed():
     assert not hasattr(repo, "_mark_existing_idle")
     assert not hasattr(repo, "mark_idle")
     assert not hasattr(repo, "mark_active")
+
+
+def test_unified_session_info_has_origin():
+    """UnifiedSessionInfo includes origin field."""
+    from src.claude.sessions import UnifiedSessionInfo
+    from datetime import datetime
+    from pathlib import Path
+
+    session = UnifiedSessionInfo(
+        session_id="550e8400-e29b-41d4-a716-446655440000",
+        path=Path("/tmp/session.jsonl"),
+        mtime=datetime.now(),
+        preview="test message",
+        origin="telegram",
+    )
+    assert session.origin in ("telegram", "terminal")
+
+
+def test_scan_unified_sessions_with_origin():
+    """scan_unified_sessions marks sessions with correct origin."""
+    from src.claude.sessions import scan_unified_sessions
+    from pathlib import Path
+    import tempfile
+    import json
+    import time
+
+    # Create temporary project directory structure
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Mock ~/.claude/projects/
+        projects_dir = Path(tmpdir) / ".claude" / "projects"
+        project_dir = projects_dir / "-tmp-testproject"
+        project_dir.mkdir(parents=True)
+
+        # Create two session files
+        session1_id = "telegram-session-123"
+        session2_id = "terminal-session-456"
+
+        session1_file = project_dir / f"{session1_id}.jsonl"
+        session2_file = project_dir / f"{session2_id}.jsonl"
+
+        # Write sample session data
+        session_data = {
+            "type": "user",
+            "message": {"content": "Hello from test"}
+        }
+
+        with open(session1_file, "w") as f:
+            json.dump(session_data, f)
+
+        time.sleep(0.01)  # Ensure different mtime
+
+        with open(session2_file, "w") as f:
+            json.dump(session_data, f)
+
+        # Mock Path.home() to use our temp directory
+        original_home = Path.home
+        Path.home = lambda: Path(tmpdir)
+
+        try:
+            # Scan with telegram session owned
+            owned_ids = {session1_id}
+            sessions = scan_unified_sessions(
+                project_path="/tmp/testproject",
+                owned_session_ids=owned_ids,
+                limit=10
+            )
+
+            # Should return both sessions
+            assert len(sessions) == 2
+
+            # Find each session
+            tg_session = next((s for s in sessions if s.session_id == session1_id), None)
+            term_session = next((s for s in sessions if s.session_id == session2_id), None)
+
+            assert tg_session is not None
+            assert term_session is not None
+
+            # Check origins
+            assert tg_session.origin == "telegram"
+            assert term_session.origin == "terminal"
+
+            # Check they are sorted by mtime (newest first)
+            assert sessions[0].session_id == session2_id  # Written last
+
+        finally:
+            # Restore original Path.home
+            Path.home = original_home

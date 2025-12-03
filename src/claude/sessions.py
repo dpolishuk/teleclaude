@@ -28,6 +28,17 @@ class SessionInfo:
     preview: str  # First user message (truncated)
 
 
+@dataclass
+class UnifiedSessionInfo:
+    """Session info with origin tracking for unified display."""
+
+    session_id: str
+    path: Path
+    mtime: datetime
+    preview: str
+    origin: str  # "telegram" or "terminal"
+
+
 def scan_projects() -> list[Project]:
     """Scan ~/.claude/projects/ for available projects.
 
@@ -95,6 +106,60 @@ def scan_sessions(project: str) -> list[SessionInfo]:
                 path=session_file,
                 mtime=mtime,
                 preview=preview,
+            )
+        )
+
+    return sessions
+
+
+def scan_unified_sessions(
+    project_path: str,
+    owned_session_ids: set[str],
+    limit: int = 10,
+) -> list[UnifiedSessionInfo]:
+    """Scan sessions with origin detection.
+
+    Args:
+        project_path: Project directory path (e.g., "/root/work/teleclaude")
+        owned_session_ids: Set of session IDs owned by current telegram user
+        limit: Maximum sessions to return
+
+    Returns:
+        List of UnifiedSessionInfo sorted by mtime, newest first.
+    """
+    encoded = encode_project_path(project_path)
+    projects_dir = Path.home() / ".claude" / "projects"
+    project_dir = projects_dir / encoded
+
+    if not project_dir.exists():
+        return []
+
+    # Find all .jsonl session files
+    session_files = list(project_dir.glob("*.jsonl"))
+
+    if not session_files:
+        return []
+
+    # Sort by mtime (newest first) and limit
+    session_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+    session_files = session_files[:limit]
+
+    sessions = []
+    for session_file in session_files:
+        session_id = session_file.stem
+        mtime = datetime.fromtimestamp(session_file.stat().st_mtime)
+        preview = parse_session_preview(session_file)
+
+        # Determine origin based on ownership
+        origin = "telegram" if session_id in owned_session_ids else "terminal"
+
+        sessions.append(
+            UnifiedSessionInfo(
+                session_id=session_id,
+                path=session_file,
+                mtime=mtime,
+                preview=preview,
+                origin=origin,
             )
         )
 
