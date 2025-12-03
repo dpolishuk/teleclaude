@@ -391,3 +391,44 @@ def test_parse_session_preview_falls_back_to_user_message(tmp_path):
     preview = parse_session_preview(session_file)
 
     assert preview == "First user message here"
+
+
+def test_parse_session_preview_skips_skill_prompts(tmp_path):
+    """parse_session_preview skips skill prompt injections."""
+    session_file = tmp_path / "session.jsonl"
+    # First user message is a skill prompt (should be skipped)
+    # Second user message has actual text
+    session_file.write_text(
+        '{"type":"user","message":{"role":"user","content":"Use and follow the brainstorming skill exactly as written"}}\n'
+        '{"type":"user","message":{"role":"user","content":"Actual user request here"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == "Actual user request here"
+
+
+def test_parse_session_preview_returns_empty_for_only_skill_prompts(tmp_path):
+    """parse_session_preview returns empty if only skill prompts exist."""
+    session_file = tmp_path / "session.jsonl"
+    session_file.write_text(
+        '{"type":"user","message":{"role":"user","content":"Use and follow the brainstorming skill exactly"}}\n'
+        '{"type":"assistant","message":{"role":"assistant","content":"I will follow the skill"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == ""
+
+
+def test_parse_session_preview_returns_empty_for_metadata_only(tmp_path):
+    """parse_session_preview returns empty for files with only metadata entries."""
+    session_file = tmp_path / "session.jsonl"
+    session_file.write_text(
+        '{"type":"file-history-snapshot","snapshot":{"messageId":"abc123"}}\n'
+        '{"type":"file-history-snapshot","snapshot":{"messageId":"def456"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == ""

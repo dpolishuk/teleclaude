@@ -126,6 +126,7 @@ def scan_unified_sessions(
 
     Returns:
         List of UnifiedSessionInfo sorted by mtime, newest first.
+        Only includes sessions with meaningful content (non-empty preview).
     """
     encoded = encode_project_path(project_path)
     projects_dir = Path.home() / ".claude" / "projects"
@@ -143,15 +144,22 @@ def scan_unified_sessions(
     if not session_files:
         return []
 
-    # Sort by mtime (newest first) and limit
+    # Sort by mtime (newest first)
     session_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
-    session_files = session_files[:limit]
 
+    # Iterate through files and collect sessions with non-empty previews
     sessions = []
     for session_file in session_files:
+        if len(sessions) >= limit:
+            break
+
+        preview = parse_session_preview(session_file)
+        # Skip sessions without meaningful content
+        if not preview:
+            continue
+
         session_id = session_file.stem
         mtime = datetime.fromtimestamp(session_file.stat().st_mtime)
-        preview = parse_session_preview(session_file)
 
         # Determine origin based on ownership
         origin = "telegram" if session_id in owned_session_ids else "terminal"
@@ -203,7 +211,8 @@ def parse_session_preview(session_path: Path) -> str:
                         message = data.get("message", {})
                         content = message.get("content", "")
                         text = _extract_text_from_content(content)
-                        if text:
+                        # Skip skill prompt injections (start with "Use and follow")
+                        if text and not text.startswith("Use and follow"):
                             first_user_message = text
 
                 except json.JSONDecodeError:
