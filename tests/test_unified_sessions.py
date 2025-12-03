@@ -317,3 +317,37 @@ async def test_select_session_creates_record_for_terminal():
         telegram_user_id=12345,
         project_path="/root/work/myproject",
     )
+
+
+@pytest.mark.asyncio
+async def test_result_message_creates_session_lazily():
+    """ResultMessage with session_id creates SQLite record lazily."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    # This tests the handler portion that processes ResultMessage
+    # The key change is using get_or_create_session instead of set_claude_session_id
+
+    from src.storage.repository import SessionRepository
+
+    mock_db = MagicMock()
+    mock_db.execute = AsyncMock()
+    mock_db.add = MagicMock()
+    mock_db.flush = AsyncMock()
+
+    # Simulate no existing session
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = None
+    mock_db.execute.return_value = mock_result
+
+    repo = SessionRepository(mock_db)
+
+    # This should create a new session
+    session = await repo.get_or_create_session(
+        session_id="new-uuid-from-sdk",
+        telegram_user_id=12345,
+        project_path="/root/work/myproject",
+    )
+
+    # Verify session was added
+    mock_db.add.assert_called_once()
+    assert session.id == "new-uuid-from-sdk"

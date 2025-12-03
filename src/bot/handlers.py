@@ -519,7 +519,8 @@ async def _execute_claude_prompt(
 
     # Debug: log session state before query
     if session:
-        logger.info(f"Session before query: id={session.id}, claude_session_id={session.claude_session_id}")
+        session_id = session.id if hasattr(session, 'id') else None
+        logger.info(f"Session before query: id={session_id}")
 
     # Send "thinking" message
     thinking_msg = await update.message.reply_text(
@@ -615,21 +616,38 @@ async def _execute_claude_prompt(
                             current_tool_status = None
 
                 elif isinstance(message, ResultMessage):
-                    # Update session with Claude session ID for continuity
-                    if session and message.session_id:
+                    # Lazy session creation: create/update SQLite record when SDK returns session_id
+                    if message.session_id:
                         logger.info(f"Got session_id from Claude: {message.session_id}")
-                        session.claude_session_id = message.session_id
-                        # Persist to database
-                        async with get_session() as db:
-                            repo = SessionRepository(db)
-                            await repo.set_claude_session_id(session.id, message.session_id)
-                        logger.info(f"Saved claude_session_id to database: {message.session_id}")
+
+                        # Get project path from current session context
+                        project_path = session.project_path if session else None
+
+                        if project_path:
+                            async with get_session() as db:
+                                repo = SessionRepository(db)
+                                db_session = await repo.get_or_create_session(
+                                    session_id=message.session_id,
+                                    telegram_user_id=update.effective_user.id,
+                                    project_path=project_path,
+                                )
+                                # Update context with the database session
+                                context.user_data["current_session"] = db_session
+                                context.user_data["current_session_id"] = db_session.id
+
+                            logger.info(f"Session record created/updated: {message.session_id}")
 
                         # Cache in user_data for persistence/change detection
                         context.user_data["cached_claude_session_id"] = message.session_id
+
                     # Update session cost (if session exists)
-                    if session and message.total_cost_usd:
-                        session.total_cost_usd += message.total_cost_usd
+                    if message.total_cost_usd:
+                        # Refresh session from context in case it was just created
+                        session = context.user_data.get("current_session")
+                        if session and hasattr(session, 'id'):
+                            async with get_session() as db:
+                                repo = SessionRepository(db)
+                                await repo.add_cost(session.id, message.total_cost_usd)
 
             # Final flush
             await streamer.flush()
