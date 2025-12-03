@@ -613,6 +613,9 @@ async def _execute_claude_prompt(
                             repo = SessionRepository(db)
                             await repo.set_claude_session_id(session.id, message.session_id)
                         logger.info(f"Saved claude_session_id to database: {message.session_id}")
+
+                        # Cache in user_data for persistence/change detection
+                        context.user_data["cached_claude_session_id"] = message.session_id
                     # Update session cost (if session exists)
                     if session and message.total_cost_usd:
                         session.total_cost_usd += message.total_cost_usd

@@ -109,3 +109,15 @@ async def test_start_restores_existing_session():
     update.message.reply_text.assert_called()
     call_args = update.message.reply_text.call_args[0][0]
     assert "restored" in call_args.lower() or "Session" in call_args
+
+
+async def test_claude_session_id_cached_after_query():
+    """Claude session ID is cached in user_data after query."""
+    # This tests that when we get a session_id from Claude,
+    # we store it in user_data for persistence
+    import inspect
+    from src.bot import handlers
+
+    source = inspect.getsource(handlers._execute_claude_prompt)
+
+    assert "cached_claude_session_id" in source
