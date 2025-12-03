@@ -32,8 +32,6 @@ def session(tmp_path):
     """Real session for integration tests."""
     return MagicMock(
         id="integ_test",
-        claude_session_id=None,
-        current_directory=str(tmp_path),
         project_path=str(tmp_path),
     )
 

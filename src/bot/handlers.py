@@ -1,8 +1,4 @@
-"""Telegram bot command handlers.
-
-TODO (Tasks 5-8): References to removed fields (claude_session_id, project_name,
-current_directory) are intentionally left for later tasks which will update this file.
-"""
+"""Telegram bot command handlers."""
 import asyncio
 from telegram import Update
 from telegram.constants import ChatAction
@@ -366,9 +362,13 @@ async def cd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     new_path = context.args[0]
-    # TODO: Validate path with sandbox
-    session.current_directory = new_path
-    await update.message.reply_text(f"Changed to: <code>{new_path}</code>", parse_mode="HTML")
+    # Note: current_directory is no longer stored in session model
+    # TODO: Implement directory navigation with proper sandbox validation
+    await update.message.reply_text(
+        f"⚠️ Directory navigation not yet implemented.\n"
+        f"Project path: <code>{session.project_path}</code>",
+        parse_mode="HTML",
+    )
 
 
 async def ls(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -379,7 +379,7 @@ async def ls(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("❌ No active session. Use /new to start one.")
         return
 
-    path = context.args[0] if context.args else session.current_directory
+    path = context.args[0] if context.args else session.project_path
     # TODO: List directory contents
     await update.message.reply_text(f"Contents of <code>{path}</code>:\n\n(not implemented)", parse_mode="HTML")
 
@@ -393,7 +393,7 @@ async def pwd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     await update.message.reply_text(
-        f"Current directory: <code>{session.current_directory}</code>",
+        f"Project path: <code>{session.project_path}</code>",
         parse_mode="HTML",
     )
 

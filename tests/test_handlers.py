@@ -60,9 +60,9 @@ async def test_help_handler(mock_update, mock_context):
 
 @pytest.mark.asyncio
 async def test_pwd_with_session(mock_update, mock_context):
-    """pwd shows current directory when session exists."""
+    """pwd shows project path when session exists."""
     mock_context.user_data["current_session"] = MagicMock(
-        current_directory="/home/user/myapp"
+        project_path="/home/user/myapp"
     )
 
     await pwd(mock_update, mock_context)
@@ -101,8 +101,6 @@ async def test_handle_message_with_session_calls_claude(mock_update, mock_contex
     """handle_message sends prompt to Claude when session exists."""
     mock_session = MagicMock(
         id="sess123",
-        claude_session_id=None,
-        current_directory="/test",
         project_path="/test",
         total_cost_usd=0.0,
     )

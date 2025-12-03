@@ -24,8 +24,6 @@ def mock_session():
     """Create mock session."""
     return MagicMock(
         id="test123",
-        claude_session_id=None,
-        current_directory="/home/user/myapp",
         project_path="/home/user/myapp",
     )
 
