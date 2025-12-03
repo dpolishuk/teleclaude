@@ -211,3 +211,36 @@ def test_scan_unified_sessions_with_origin():
         finally:
             # Restore original Path.home
             Path.home = original_home
+
+
+def test_unified_sessions_keyboard_shows_origin_icons():
+    """Unified sessions keyboard shows origin icons."""
+    from datetime import datetime
+    from pathlib import Path
+    from src.claude.sessions import UnifiedSessionInfo
+    from src.bot.keyboards import build_unified_sessions_keyboard
+
+    sessions = [
+        UnifiedSessionInfo(
+            session_id="abc123",
+            path=Path("/tmp/abc123.jsonl"),
+            mtime=datetime.now(),
+            preview="telegram session",
+            origin="telegram",
+        ),
+        UnifiedSessionInfo(
+            session_id="def456",
+            path=Path("/tmp/def456.jsonl"),
+            mtime=datetime.now(),
+            preview="terminal session",
+            origin="terminal",
+        ),
+    ]
+
+    keyboard = build_unified_sessions_keyboard(sessions)
+    buttons = keyboard.inline_keyboard
+
+    # First button should have telegram icon
+    assert "\U0001F4F1" in buttons[0][0].text  # 📱
+    # Second button should have terminal icon
+    assert "\U0001F4BB" in buttons[1][0].text  # 💻

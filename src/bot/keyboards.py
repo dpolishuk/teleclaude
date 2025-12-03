@@ -7,7 +7,7 @@ This module provides keyboard builders for the /resume command flow:
 """
 from datetime import datetime
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from src.claude.sessions import Project, SessionInfo
+from src.claude.sessions import Project, SessionInfo, UnifiedSessionInfo
 
 # Telegram's maximum button text length
 TELEGRAM_BUTTON_TEXT_LIMIT = 64
@@ -121,6 +121,48 @@ def build_sessions_list_keyboard(sessions: list[SessionInfo]) -> InlineKeyboardM
             display_text = f"{relative}: \"{preview}\""
         else:
             display_text = f"{relative}: (empty)"
+
+        if len(display_text) > TELEGRAM_BUTTON_TEXT_LIMIT:
+            display_text = display_text[:61] + "..."
+
+        button = InlineKeyboardButton(
+            text=display_text,
+            callback_data=f"select_session:{session.session_id}",
+        )
+        buttons.append([button])
+
+    return InlineKeyboardMarkup(buttons)
+
+
+def build_unified_sessions_keyboard(
+    sessions: list[UnifiedSessionInfo],
+) -> InlineKeyboardMarkup:
+    """Build unified session list keyboard with origin icons.
+
+    Args:
+        sessions: List of UnifiedSessionInfo from scan_unified_sessions()
+
+    Returns:
+        InlineKeyboardMarkup with origin icons and previews.
+        Callback data pattern: select_session:<session_id>
+    """
+    buttons = []
+
+    for session in sessions:
+        relative = _format_relative_time(session.mtime)
+        preview = session.preview
+
+        # Origin icon
+        origin_icon = "\U0001F4F1" if session.origin == "telegram" else "\U0001F4BB"
+
+        # Build display: "📱 2h ago: message..."
+        if preview:
+            max_preview = TELEGRAM_BUTTON_TEXT_LIMIT - len(relative) - 6  # icon + ": "
+            if len(preview) > max_preview:
+                preview = preview[: max_preview - 1] + "..."
+            display_text = f"{origin_icon} {relative}: \"{preview}\""
+        else:
+            display_text = f"{origin_icon} {relative}: (empty)"
 
         if len(display_text) > TELEGRAM_BUTTON_TEXT_LIMIT:
             display_text = display_text[:61] + "..."
