@@ -134,8 +134,11 @@ def scan_unified_sessions(
     if not project_dir.exists():
         return []
 
-    # Find all .jsonl session files
-    session_files = list(project_dir.glob("*.jsonl"))
+    # Find all .jsonl session files, excluding subagent files (agent-*)
+    session_files = [
+        f for f in project_dir.glob("*.jsonl")
+        if not f.stem.startswith("agent-")
+    ]
 
     if not session_files:
         return []
