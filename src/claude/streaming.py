@@ -14,8 +14,50 @@ escape_html = escape
 balance_html = balance_tags
 
 
+def find_safe_truncate_point(text: str, target: int) -> int:
+    """Find a safe position to truncate that doesn't break entities or tags.
+
+    Scans backwards from target to find a position not inside:
+    - HTML entity (&amp; &lt; etc.)
+    - HTML tag (<b>, </code>, etc.)
+
+    Args:
+        text: The text to analyze
+        target: Target truncation position
+
+    Returns:
+        A position <= target that's safe to cut.
+    """
+    pos = target
+
+    # Check if inside HTML entity (& without closing ;)
+    amp_search_start = max(0, pos - 8)  # entities max ~8 chars
+    amp_pos = text.rfind('&', amp_search_start, pos)
+    if amp_pos != -1:
+        semicolon_pos = text.find(';', amp_pos, pos + 1)
+        if semicolon_pos == -1 or semicolon_pos >= pos:
+            # Inside entity - move before &
+            pos = amp_pos
+
+    # Check if inside HTML tag (< without closing >)
+    lt_pos = text.rfind('<', 0, pos)
+    if lt_pos != -1:
+        gt_pos = text.find('>', lt_pos, pos + 1)
+        if gt_pos == -1 or gt_pos >= pos:
+            # Inside tag - move before <
+            pos = lt_pos
+
+    # Nudge to natural boundary (newline or space)
+    for boundary in ['\n', ' ']:
+        bound_pos = text.rfind(boundary, max(0, pos - 50), pos)
+        if bound_pos != -1:
+            return bound_pos + 1
+
+    return pos
+
+
 def safe_truncate_html(text: str, max_length: int, prefix: str = "") -> str:
-    """Truncate HTML text safely without breaking tags.
+    """Truncate HTML text safely without breaking tags or entities.
 
     Args:
         text: HTML text to truncate.
@@ -36,32 +78,23 @@ def safe_truncate_html(text: str, max_length: int, prefix: str = "") -> str:
     if available < 50:
         available = max_length - len(prefix) - 20
 
-    # Take from the end for streaming (show latest content)
-    truncate_point = max(0, len(text) - available)
+    # Find safe truncation point (not inside entity or tag)
+    target_point = max(0, len(text) - available)
+    truncate_point = find_safe_truncate_point(text, target_point)
+
     truncated = text[truncate_point:]
 
-    # Find a safe break point (not in middle of a tag)
-    # Look for start of incomplete tag at beginning
-    first_gt = truncated.find(">")
-    first_lt = truncated.find("<")
-
-    if first_lt != -1 and (first_gt == -1 or first_gt < first_lt):
-        # We might be starting mid-tag, skip to after first complete tag
-        if first_gt != -1:
-            truncated = truncated[first_gt + 1:]
-
-    # Find what tags were open at the truncation point
-    # by analyzing the text before truncation
+    # Find tags that were open at truncation point
     if truncate_point > 0:
         prefix_text = text[:truncate_point]
-        open_at_truncation = find_open_tags(prefix_text)
+        open_tags = find_open_tags(prefix_text)
 
-        # Add opening tags that were open before truncation
-        if open_at_truncation:
-            opening_tags = "".join(f"<{tag}>" for tag in open_at_truncation)
-            truncated = opening_tags + truncated
+        # Prepend opening tags to maintain formatting
+        if open_tags:
+            opening = "".join(f"<{tag}>" for tag in open_tags)
+            truncated = opening + truncated
 
-    # Balance any unclosed tags in the truncated text
+    # Balance any unclosed tags at the end
     balanced = balance_html(truncated)
 
     return f"{prefix}{balanced}" if prefix else balanced
