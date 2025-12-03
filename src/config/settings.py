@@ -125,6 +125,7 @@ class Config:
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     mcp: MCPConfig = field(default_factory=MCPConfig)
     voice: VoiceConfig = field(default_factory=VoiceConfig)
+    persistence_path: str = "~/.teleclaude/bot_persistence.pickle"
     telegram_token: str = ""
 
     def is_user_allowed(self, user_id: int) -> bool:
@@ -214,9 +215,15 @@ def load_config(path: Path | str | None = None) -> Config:
 
 def _parse_config(data: dict[str, Any]) -> Config:
     """Parse config dictionary into Config object."""
+    # Handle persistence_path with tilde expansion
+    persistence_path = data.get("persistence_path", "~/.teleclaude/bot_persistence.pickle")
+    if "~" in persistence_path:
+        persistence_path = str(Path(persistence_path).expanduser())
+
     config = Config(
         allowed_users=data.get("allowed_users", []),
         projects=data.get("projects", {}),
+        persistence_path=persistence_path,
     )
 
     # Load MCP configuration
