@@ -187,11 +187,13 @@ def parse_session_preview(session_path: Path) -> str:
                         message = data.get("message", {})
                         content = message.get("content", "")
 
-                        if content:
+                        # Extract text from content
+                        text = _extract_text_from_content(content)
+                        if text:
                             # Truncate if longer than 100 chars
-                            if len(content) > 100:
-                                return content[:100] + "..."
-                            return content
+                            if len(text) > 100:
+                                return text[:100] + "..."
+                            return text
 
                 except json.JSONDecodeError:
                     # Skip malformed lines
@@ -200,6 +202,38 @@ def parse_session_preview(session_path: Path) -> str:
     except Exception:
         # Handle any file reading errors gracefully
         pass
+
+    return ""
+
+
+def _extract_text_from_content(content) -> str:
+    """Extract plain text from message content.
+
+    Content can be:
+    - A string (direct text message)
+    - A list of content blocks (may include tool_result, text, etc.)
+
+    Args:
+        content: Message content (string or list)
+
+    Returns:
+        Extracted text, or empty string if none found.
+    """
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        # Look for text blocks, skip tool_result blocks
+        for block in content:
+            if isinstance(block, dict):
+                # Skip tool results - they contain JSON data, not user messages
+                if block.get("type") == "tool_result":
+                    continue
+                # Extract text from text blocks
+                if block.get("type") == "text":
+                    text = block.get("text", "")
+                    if text:
+                        return text
 
     return ""
 

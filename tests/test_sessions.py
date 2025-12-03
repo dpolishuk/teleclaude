@@ -322,3 +322,31 @@ def test_scan_sessions_includes_previews(mock_claude_dir, monkeypatch):
     assert "fix permission buttons" in previews
     assert "implement MCP support for the bot" in previews
     assert "add session storage with SQLite" in previews
+
+
+def test_parse_session_preview_skips_tool_results(tmp_path):
+    """parse_session_preview skips tool_result content blocks."""
+    session_file = tmp_path / "session.jsonl"
+    # First user message is a tool result (should be skipped)
+    # Second user message has actual text
+    session_file.write_text(
+        '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_01ABC","content":"tool output"}]}}\n'
+        '{"type":"user","message":{"role":"user","content":"This is the real message"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == "This is the real message"
+
+
+def test_parse_session_preview_handles_text_blocks(tmp_path):
+    """parse_session_preview extracts text from content blocks."""
+    session_file = tmp_path / "session.jsonl"
+    # Content as list with text block
+    session_file.write_text(
+        '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"Message in text block"}]}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == "Message in text block"
