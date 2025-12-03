@@ -1,7 +1,5 @@
 """Test session preview functionality."""
-import pytest
 import json
-from pathlib import Path
 
 
 def test_get_session_last_message(tmp_path):
@@ -48,5 +46,36 @@ def test_get_session_last_message_missing_file():
     from src.claude.sessions import get_session_last_message
 
     result = get_session_last_message("/nonexistent/path.jsonl")
+
+    assert result is None
+
+
+def test_get_session_file_path(tmp_path):
+    """get_session_file_path finds session file by Claude session ID."""
+    from pathlib import Path
+    from src.claude.sessions import get_session_file_path, encode_project_path
+
+    # Create mock Claude directory structure
+    project_path = str(tmp_path / "myproject")
+    encoded = encode_project_path(project_path)
+
+    sessions_dir = Path.home() / ".claude" / "projects" / encoded / "sessions"
+    sessions_dir.mkdir(parents=True, exist_ok=True)
+
+    # Create session file
+    session_file = sessions_dir / "abc-123-def.jsonl"
+    session_file.write_text('{"type": "human", "message": {"content": "test"}}')
+
+    result = get_session_file_path(project_path, "abc-123-def")
+
+    assert result is not None
+    assert result.endswith("abc-123-def.jsonl")
+
+
+def test_get_session_file_path_not_found(tmp_path):
+    """get_session_file_path returns None for missing session."""
+    from src.claude.sessions import get_session_file_path
+
+    result = get_session_file_path("/nonexistent", "no-such-session")
 
     assert result is None

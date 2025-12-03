@@ -264,3 +264,26 @@ def get_session_last_message(
 
     except Exception:
         return None
+
+
+def get_session_file_path(project_path: str, claude_session_id: str) -> str | None:
+    """Get the path to a Claude session file.
+
+    Args:
+        project_path: Path to the project
+        claude_session_id: Claude session UUID
+
+    Returns:
+        Full path to session .jsonl file, or None if not found
+    """
+    encoded = encode_project_path(project_path)
+    sessions_dir = Path.home() / ".claude" / "projects" / encoded / "sessions"
+
+    if not sessions_dir.exists():
+        return None
+
+    session_file = sessions_dir / f"{claude_session_id}.jsonl"
+    if session_file.exists():
+        return str(session_file)
+
+    return None
