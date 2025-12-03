@@ -22,10 +22,17 @@ class SessionRepository:
         project_path: str,
         project_name: Optional[str] = None,
     ) -> Session:
-        """Create a new session."""
+        """Create a new session.
+
+        TODO: This is transitional - in Tasks 5-8, session creation will be lazy.
+        The actual UUID will come from the SDK when the first message is sent,
+        not during session creation. For now, we generate a temporary hex ID to keep
+        create_session working.
+        """
         # Mark existing active sessions as idle
         await self._mark_existing_idle(telegram_user_id)
 
+        # TODO: This generates a 32-char hex string. SDK will provide 36-char UUIDs later.
         session = Session(
             id=secrets.token_hex(16),
             telegram_user_id=telegram_user_id,

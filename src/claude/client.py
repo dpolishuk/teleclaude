@@ -1,4 +1,8 @@
-"""Claude SDK client wrapper."""
+"""Claude SDK client wrapper.
+
+TODO (Tasks 5-8): References to removed fields (claude_session_id, current_directory)
+are intentionally left for later tasks which will update this file.
+"""
 from typing import Any, Optional
 
 from telegram import Bot

@@ -1,4 +1,8 @@
-"""Telegram bot command handlers."""
+"""Telegram bot command handlers.
+
+TODO (Tasks 5-8): References to removed fields (claude_session_id, project_name,
+current_directory) are intentionally left for later tasks which will update this file.
+"""
 import asyncio
 from telegram import Update
 from telegram.constants import ChatAction

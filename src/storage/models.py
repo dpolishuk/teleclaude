@@ -50,7 +50,7 @@ class Usage(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[Optional[str]] = mapped_column(
-        String(32), ForeignKey("sessions.id"), nullable=True
+        String(36), ForeignKey("sessions.id"), nullable=True
     )
     telegram_user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     input_tokens: Mapped[int] = mapped_column(Integer, default=0)
@@ -66,7 +66,7 @@ class AuditLog(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     telegram_user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
-    session_id: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
     action: Mapped[str] = mapped_column(String(50), nullable=False)
     details: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     timestamp: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))
