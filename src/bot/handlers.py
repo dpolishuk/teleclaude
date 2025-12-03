@@ -296,7 +296,7 @@ async def switch_session(
 
 async def select_model(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /models command - show model selection menu."""
-    current_model = context.user_data.get("model", DEFAULT_MODEL)
+    current_model = context.user_data.get("selected_model", DEFAULT_MODEL)
     keyboard = build_models_keyboard(current_model)
 
     await update.message.reply_text(
@@ -534,7 +534,7 @@ async def _execute_claude_prompt(
     try:
         # Get resume mode and model from context if available
         resume_mode = context.user_data.get("resume_mode")
-        model = context.user_data.get("model")  # User's model preference
+        model = context.user_data.get("selected_model")  # User's model preference
 
         # Pass bot and chat_id for interactive permission prompts
         async with TeleClaudeClient(

@@ -407,13 +407,13 @@ async def _handle_select_model(
         return
 
     # Check if already selected (avoid "message not modified" error)
-    current_model = context.user_data.get("model")
+    current_model = context.user_data.get("selected_model")
     if current_model == value:
         await query.answer(f"Already using {value}")
         return
 
-    # Store model preference in user_data
-    context.user_data["model"] = value
+    # Store model preference in user_data for persistence
+    context.user_data["selected_model"] = value
 
     logger.info(f"Model selected: {value} for user {update.effective_user.id}")
 

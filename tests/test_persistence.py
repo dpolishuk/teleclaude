@@ -121,3 +121,26 @@ async def test_claude_session_id_cached_after_query():
     source = inspect.getsource(handlers._execute_claude_prompt)
 
     assert "cached_claude_session_id" in source
+
+
+async def test_model_selection_stored_in_user_data():
+    """Selected model is stored in user_data for persistence."""
+    from unittest.mock import AsyncMock, MagicMock
+    from src.bot.callbacks import handle_callback
+
+    update = MagicMock()
+    update.callback_query = AsyncMock()
+    update.callback_query.data = "select_model:opus"
+    update.callback_query.answer = AsyncMock()
+    update.callback_query.edit_message_text = AsyncMock()
+    update.effective_user.id = 12345
+
+    context = MagicMock()
+    context.user_data = {}
+    context.bot_data = {"config": MagicMock()}
+
+    await handle_callback(update, context)
+
+    # Verify model is stored in user_data for persistence
+    assert "selected_model" in context.user_data
+    assert context.user_data["selected_model"] == "opus"
