@@ -2,7 +2,6 @@
 import pytest
 from src.storage.database import init_database, get_session
 from src.storage.repository import SessionRepository, UsageRepository, AuditRepository
-from src.storage.models import SessionStatus
 
 
 @pytest.fixture
@@ -37,7 +36,6 @@ async def test_create_session(tmp_path):
         assert session.id is not None
         assert session.telegram_user_id == 12345678
         assert session.project_path == "/home/user/myapp"
-        assert session.status == SessionStatus.ACTIVE
 
 
 @pytest.mark.asyncio
@@ -76,7 +74,6 @@ async def test_get_active_session(tmp_path):
 
         assert active is not None
         assert active.telegram_user_id == 12345678
-        assert active.status == SessionStatus.ACTIVE
 
 
 @pytest.mark.asyncio

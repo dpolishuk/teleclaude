@@ -1,7 +1,7 @@
 """Test database models."""
 import pytest
 from datetime import datetime
-from src.storage.models import Session, Usage, AuditLog, SessionStatus
+from src.storage.models import Session, Usage, AuditLog
 
 
 def test_session_creation():
@@ -15,7 +15,6 @@ def test_session_creation():
     assert session.id == "test123"
     assert session.telegram_user_id == 12345678
     assert session.project_path == "/home/user/myapp"
-    assert session.status == SessionStatus.ACTIVE
 
 
 def test_session_defaults():
@@ -26,18 +25,9 @@ def test_session_defaults():
         project_path="/home/user/myapp",
     )
 
-    assert session.claude_session_id is None
-    assert session.project_name is None
-    assert session.current_directory is None
     assert session.total_cost_usd == 0.0
     assert session.created_at is not None
-
-
-def test_session_status_enum():
-    """SessionStatus enum has expected values."""
-    assert SessionStatus.ACTIVE.value == "active"
-    assert SessionStatus.IDLE.value == "idle"
-    assert SessionStatus.ARCHIVED.value == "archived"
+    assert session.last_active is not None
 
 
 def test_usage_creation():

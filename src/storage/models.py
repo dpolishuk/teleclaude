@@ -1,9 +1,8 @@
 """Database models."""
 from datetime import datetime, timezone
-from enum import Enum
 from typing import Optional
 
-from sqlalchemy import String, Integer, Float, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import String, Integer, Float, Text, ForeignKey
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -13,37 +12,34 @@ class Base(DeclarativeBase):
     pass
 
 
-class SessionStatus(str, Enum):
-    """Session status enum."""
-
-    ACTIVE = "active"
-    IDLE = "idle"
-    ARCHIVED = "archived"
-
-
 class Session(Base):
-    """Session model."""
+    """Session model - maps telegram users to Claude sessions."""
 
     __tablename__ = "sessions"
 
-    id: Mapped[str] = mapped_column(String(32), primary_key=True)
-    claude_session_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    # Primary key is now the Claude session UUID
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
     telegram_user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     project_path: Mapped[str] = mapped_column(Text, nullable=False)
-    project_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    current_directory: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[SessionStatus] = mapped_column(
-        SQLEnum(SessionStatus), nullable=False, default=SessionStatus.ACTIVE, insert_default=SessionStatus.ACTIVE
+    created_at: Mapped[datetime] = mapped_column(
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        insert_default=lambda: datetime.now(timezone.utc),
     )
-    created_at: Mapped[datetime] = mapped_column(nullable=False, default=lambda: datetime.now(timezone.utc), insert_default=lambda: datetime.now(timezone.utc))
-    last_active: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    total_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, insert_default=0.0)
+    last_active: Mapped[datetime] = mapped_column(
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        insert_default=lambda: datetime.now(timezone.utc),
+    )
+    total_cost_usd: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, insert_default=0.0
+    )
 
     def __init__(self, **kwargs):
         """Initialize with defaults."""
-        kwargs.setdefault('status', SessionStatus.ACTIVE)
-        kwargs.setdefault('total_cost_usd', 0.0)
-        kwargs.setdefault('created_at', datetime.now(timezone.utc))
+        kwargs.setdefault("total_cost_usd", 0.0)
+        kwargs.setdefault("created_at", datetime.now(timezone.utc))
+        kwargs.setdefault("last_active", datetime.now(timezone.utc))
         super().__init__(**kwargs)
 
 

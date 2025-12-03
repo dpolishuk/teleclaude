@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Session, Usage, AuditLog, SessionStatus
+from .models import Session, Usage, AuditLog
 
 
 class SessionRepository:
@@ -30,9 +30,6 @@ class SessionRepository:
             id=secrets.token_hex(16),
             telegram_user_id=telegram_user_id,
             project_path=project_path,
-            project_name=project_name,
-            current_directory=project_path,
-            status=SessionStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
             last_active=datetime.now(timezone.utc),
         )
@@ -49,12 +46,12 @@ class SessionRepository:
         return result.scalar_one_or_none()
 
     async def get_active_session(self, telegram_user_id: int) -> Optional[Session]:
-        """Get active session for user."""
+        """Get active session for user (most recent)."""
         result = await self.db.execute(
             select(Session)
             .where(Session.telegram_user_id == telegram_user_id)
-            .where(Session.status == SessionStatus.ACTIVE)
             .order_by(Session.last_active.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none()
 
@@ -86,39 +83,31 @@ class SessionRepository:
     async def set_claude_session_id(
         self, session_id: str, claude_session_id: str
     ) -> None:
-        """Set Claude session ID."""
-        session = await self.get_session(session_id)
-        if session:
-            session.claude_session_id = claude_session_id
-            await self.db.flush()
+        """Set Claude session ID (deprecated - id is now the claude_session_id)."""
+        # This method is now a no-op since id field is the claude_session_id
+        # Will be removed in Task 2
+        pass
 
     async def mark_idle(self, session_id: str) -> None:
-        """Mark session as idle."""
+        """Mark session as idle (updates last_active)."""
         session = await self.get_session(session_id)
         if session:
-            session.status = SessionStatus.IDLE
             session.last_active = datetime.now(timezone.utc)
             await self.db.flush()
 
     async def mark_active(self, session_id: str) -> None:
-        """Mark session as active."""
+        """Mark session as active (updates last_active)."""
         session = await self.get_session(session_id)
         if session:
-            # Mark other active sessions as idle first
             await self._mark_existing_idle(session.telegram_user_id)
-            session.status = SessionStatus.ACTIVE
             session.last_active = datetime.now(timezone.utc)
             await self.db.flush()
 
     async def _mark_existing_idle(self, telegram_user_id: int) -> None:
-        """Mark existing active sessions as idle."""
-        result = await self.db.execute(
-            select(Session)
-            .where(Session.telegram_user_id == telegram_user_id)
-            .where(Session.status == SessionStatus.ACTIVE)
-        )
-        for session in result.scalars():
-            session.status = SessionStatus.IDLE
+        """Update last_active for existing sessions."""
+        # This method is now a no-op since status field removed
+        # Will be removed in Task 2
+        pass
 
 
 class UsageRepository:
