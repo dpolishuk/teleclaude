@@ -58,7 +58,7 @@ async def test_get_session_by_id(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_get_active_session(tmp_path):
+async def test_get_active_session_for_user(tmp_path):
     """Repository retrieves active session for user."""
     db_path = tmp_path / "test.db"
     await init_database(str(db_path))
@@ -70,7 +70,7 @@ async def test_get_active_session(tmp_path):
             project_path="/home/user/myapp",
         )
 
-        active = await repo.get_active_session(12345678)
+        active = await repo.get_active_session_for_user(12345678)
 
         assert active is not None
         assert active.telegram_user_id == 12345678

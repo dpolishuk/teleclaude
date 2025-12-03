@@ -22,38 +22,60 @@ class SessionRepository:
         project_path: str,
         project_name: Optional[str] = None,
     ) -> Session:
-        """Create a new session.
+        """Create a new session (transitional - will be removed in Task 8).
 
-        TODO: This is transitional - in Tasks 5-8, session creation will be lazy.
-        The actual UUID will come from the SDK when the first message is sent,
-        not during session creation. For now, we generate a temporary hex ID to keep
-        create_session working.
+        This method is kept for backward compatibility during the migration.
+        New code should use get_or_create_session instead.
         """
-        # Mark existing active sessions as idle
-        await self._mark_existing_idle(telegram_user_id)
-
-        # TODO: This generates a 32-char hex string. SDK will provide 36-char UUIDs later.
+        # Generate temporary hex ID (32 chars)
+        # In Task 7+, SDK will provide the UUID directly
         session = Session(
             id=secrets.token_hex(16),
             telegram_user_id=telegram_user_id,
             project_path=project_path,
-            created_at=datetime.now(timezone.utc),
-            last_active=datetime.now(timezone.utc),
         )
+        self.db.add(session)
+        await self.db.flush()
+        return session
 
+    async def get_or_create_session(
+        self,
+        session_id: str,
+        telegram_user_id: int,
+        project_path: str,
+    ) -> Session:
+        """Get existing session or create new one.
+
+        This is the primary method for unified sessions - called when
+        SDK returns a session_id.
+        """
+        session = await self.get_session(session_id)
+        if session:
+            session.last_active = datetime.now(timezone.utc)
+            await self.db.flush()
+            return session
+
+        # Create new session with the SDK's session_id as primary key
+        session = Session(
+            id=session_id,
+            telegram_user_id=telegram_user_id,
+            project_path=project_path,
+        )
         self.db.add(session)
         await self.db.flush()
         return session
 
     async def get_session(self, session_id: str) -> Optional[Session]:
-        """Get session by ID."""
+        """Get session by ID (claude_session_id)."""
         result = await self.db.execute(
             select(Session).where(Session.id == session_id)
         )
         return result.scalar_one_or_none()
 
-    async def get_active_session(self, telegram_user_id: int) -> Optional[Session]:
-        """Get active session for user (most recent)."""
+    async def get_active_session_for_user(
+        self, telegram_user_id: int
+    ) -> Optional[Session]:
+        """Get most recent session for user."""
         result = await self.db.execute(
             select(Session)
             .where(Session.telegram_user_id == telegram_user_id)
@@ -74,8 +96,21 @@ class SessionRepository:
         )
         return list(result.scalars().all())
 
+    async def list_sessions_for_project(
+        self, telegram_user_id: int, project_path: str, limit: int = 10
+    ) -> list[Session]:
+        """List sessions for a specific project."""
+        result = await self.db.execute(
+            select(Session)
+            .where(Session.telegram_user_id == telegram_user_id)
+            .where(Session.project_path == project_path)
+            .order_by(Session.last_active.desc())
+            .limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def update_session(self, session: Session) -> None:
-        """Update session."""
+        """Update session last_active timestamp."""
         session.last_active = datetime.now(timezone.utc)
         await self.db.flush()
 
@@ -87,34 +122,19 @@ class SessionRepository:
             session.last_active = datetime.now(timezone.utc)
             await self.db.flush()
 
-    async def set_claude_session_id(
-        self, session_id: str, claude_session_id: str
-    ) -> None:
-        """Set Claude session ID (deprecated - id is now the claude_session_id)."""
-        # This method is now a no-op since id field is the claude_session_id
-        # Will be removed in Task 2
-        pass
+    async def get_session_ids_for_project(
+        self, telegram_user_id: int, project_path: str
+    ) -> set[str]:
+        """Get set of session IDs owned by user for a project.
 
-    async def mark_idle(self, session_id: str) -> None:
-        """Mark session as idle (updates last_active)."""
-        session = await self.get_session(session_id)
-        if session:
-            session.last_active = datetime.now(timezone.utc)
-            await self.db.flush()
-
-    async def mark_active(self, session_id: str) -> None:
-        """Mark session as active (updates last_active)."""
-        session = await self.get_session(session_id)
-        if session:
-            await self._mark_existing_idle(session.telegram_user_id)
-            session.last_active = datetime.now(timezone.utc)
-            await self.db.flush()
-
-    async def _mark_existing_idle(self, telegram_user_id: int) -> None:
-        """Update last_active for existing sessions."""
-        # This method is now a no-op since status field removed
-        # Will be removed in Task 2
-        pass
+        Used to determine origin (Telegram vs Terminal) in unified list.
+        """
+        result = await self.db.execute(
+            select(Session.id)
+            .where(Session.telegram_user_id == telegram_user_id)
+            .where(Session.project_path == project_path)
+        )
+        return {row[0] for row in result.all()}
 
 
 class UsageRepository:
