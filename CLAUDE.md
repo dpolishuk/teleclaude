@@ -94,11 +94,17 @@ mypy src/
 - Commands with `$ARGUMENTS` or `$1`, `$2` placeholders prompt for input
 - Dynamic command menu updates per project/session
 
+### Unified Sessions
+- Sessions visible in both `claude --resume` and Telegram `/sessions`
+- Origin icons: 📱 Telegram, 💻 Terminal
+- Lazy session creation: SQLite record created when SDK returns session_id
+- Single ID: claude_session_id is the primary key everywhere
+- Claim terminal sessions: selecting a 💻 session in Telegram creates ownership record
+
 ### Session Resume
 - Browse and resume Claude Code terminal sessions in Telegram
 - Three-step UI: Project → Session → Mode (Fork/Continue)
 - Session previews show first user message
-- Persists `claude_session_id` for SDK continuity
 
 ### MCP Server Management
 - List servers with status indicators
@@ -136,5 +142,5 @@ mypy src/
 
 - `post_init()` hook loads CommandRegistry and MCPManager at startup
 - `concurrent_updates(True)` enabled for responsive permission handling
-- Session model includes `claude_session_id` for SDK session persistence
+- Session primary key = SDK session UUID (unified with Claude Code)
 - TypingIndicator class sends typing action every 4 seconds during processing
