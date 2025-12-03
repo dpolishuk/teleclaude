@@ -170,43 +170,54 @@ def scan_unified_sessions(
 
 
 def parse_session_preview(session_path: Path) -> str:
-    """Extract first user message from JSONL for preview.
+    """Extract session preview from JSONL file.
+
+    Prefers the last AI-generated summary (like Claude Code shows),
+    falls back to first user message if no summary exists.
 
     Args:
         session_path: Path to session .jsonl file
 
     Returns:
-        First user message content, truncated to 100 chars if needed.
-        Returns empty string if no user messages found or file is empty.
+        Session summary or first user message, truncated to 100 chars.
+        Returns empty string if nothing found or file is empty.
     """
+    last_summary = ""
+    first_user_message = ""
+
     try:
         with open(session_path, "r") as f:
             for line in f:
                 try:
                     data = json.loads(line.strip())
+                    msg_type = data.get("type")
 
-                    # Look for user message type
-                    if data.get("type") == "user":
+                    # Collect summaries (use the last one - most recent)
+                    if msg_type == "summary":
+                        summary = data.get("summary", "")
+                        if summary:
+                            last_summary = summary
+
+                    # Also track first user message as fallback
+                    elif msg_type == "user" and not first_user_message:
                         message = data.get("message", {})
                         content = message.get("content", "")
-
-                        # Extract text from content
                         text = _extract_text_from_content(content)
                         if text:
-                            # Truncate if longer than 100 chars
-                            if len(text) > 100:
-                                return text[:100] + "..."
-                            return text
+                            first_user_message = text
 
                 except json.JSONDecodeError:
-                    # Skip malformed lines
                     continue
 
     except Exception:
-        # Handle any file reading errors gracefully
         pass
 
-    return ""
+    # Prefer summary, fall back to first user message
+    preview = last_summary or first_user_message
+
+    if preview and len(preview) > 100:
+        return preview[:100] + "..."
+    return preview
 
 
 def _extract_text_from_content(content) -> str:

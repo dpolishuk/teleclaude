@@ -350,3 +350,44 @@ def test_parse_session_preview_handles_text_blocks(tmp_path):
     preview = parse_session_preview(session_file)
 
     assert preview == "Message in text block"
+
+
+def test_parse_session_preview_prefers_summary(tmp_path):
+    """parse_session_preview prefers AI-generated summary over user message."""
+    session_file = tmp_path / "session.jsonl"
+    session_file.write_text(
+        '{"type":"summary","summary":"TeleClaude Session Resume Feature"}\n'
+        '{"type":"user","message":{"role":"user","content":"implement session resume"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == "TeleClaude Session Resume Feature"
+
+
+def test_parse_session_preview_uses_last_summary(tmp_path):
+    """parse_session_preview uses the last (most recent) summary."""
+    session_file = tmp_path / "session.jsonl"
+    session_file.write_text(
+        '{"type":"summary","summary":"Old Summary"}\n'
+        '{"type":"summary","summary":"Newer Summary"}\n'
+        '{"type":"summary","summary":"Most Recent Summary"}\n'
+        '{"type":"user","message":{"role":"user","content":"some message"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == "Most Recent Summary"
+
+
+def test_parse_session_preview_falls_back_to_user_message(tmp_path):
+    """parse_session_preview falls back to user message if no summary."""
+    session_file = tmp_path / "session.jsonl"
+    session_file.write_text(
+        '{"type":"user","message":{"role":"user","content":"First user message here"}}\n'
+        '{"type":"assistant","message":{"role":"assistant","content":"Response"}}\n'
+    )
+
+    preview = parse_session_preview(session_file)
+
+    assert preview == "First user message here"
