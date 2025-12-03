@@ -90,7 +90,6 @@ async def _handle_project_select(
     """Handle project selection callback."""
     query = update.callback_query
     config = context.bot_data.get("config")
-    user_id = update.effective_user.id
 
     if value == "other":
         await query.edit_message_text(
@@ -102,26 +101,24 @@ async def _handle_project_select(
     if value and value in config.projects:
         project_path = config.projects[value]
 
-        # Create session in database
-        async with get_session() as db:
-            repo = SessionRepository(db)
-            session = await repo.create_session(
-                telegram_user_id=user_id,
-                project_path=project_path,
-                project_name=value,
-            )
-            # Store session in user_data for quick access
-            context.user_data["current_session"] = session
-            # Store session ID separately for persistence across restarts
-            context.user_data["current_session_id"] = session.id
-            context.user_data["current_project_path"] = project_path
+        # Set up context for new session (lazy SQLite creation)
+        from types import SimpleNamespace
+
+        temp_session = SimpleNamespace(
+            id=None,
+            project_path=project_path,
+            project_name=value,
+            total_cost_usd=0.0,
+        )
+        context.user_data["current_session"] = temp_session
+        context.user_data["current_project_path"] = project_path
 
         # Refresh commands for this project
         registry = context.bot_data.get("command_registry")
         cmd_count = await registry.refresh(query.get_bot(), project_path=project_path)
 
         await query.edit_message_text(
-            f"✅ Created session for `{value}`\n\n"
+            f"✅ Ready for session in `{value}`\n\n"
             f"📂 Path: `{project_path}`\n"
             f"📋 {cmd_count} Claude command(s) available.\n\n"
             "Send a message to chat with Claude."
@@ -337,15 +334,14 @@ async def _handle_resume_mode(
     context.user_data["resume_session_id"] = session_id
     context.user_data["resume_mode"] = mode
 
-    # Create TeleClaude Session record in database
+    # Get or create TeleClaude Session record in database
     user_id = update.effective_user.id
     async with get_session() as db:
         repo = SessionRepository(db)
-        session = await repo.create_session(
+        session = await repo.get_or_create_session(
+            session_id=session_id,
             telegram_user_id=user_id,
             project_path=project_path,
-            current_directory=project_path,
-            claude_session_id=session_id,
         )
         # Store session in user_data for quick access
         context.user_data["current_session"] = session

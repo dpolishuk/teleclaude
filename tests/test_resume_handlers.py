@@ -242,7 +242,7 @@ class TestResumeModeCallback:
             mock_repo = MagicMock()
             mock_session_obj = MagicMock()
             from unittest.mock import AsyncMock
-            mock_repo.create_session = AsyncMock(return_value=mock_session_obj)
+            mock_repo.get_or_create_session = AsyncMock(return_value=mock_session_obj)
 
             with patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
                 await _handle_resume_mode(mock_callback_update, mock_context, "session123:fork")
@@ -282,7 +282,7 @@ class TestResumeModeCallback:
             mock_repo = MagicMock()
             mock_session_obj = MagicMock()
             from unittest.mock import AsyncMock
-            mock_repo.create_session = AsyncMock(return_value=mock_session_obj)
+            mock_repo.get_or_create_session = AsyncMock(return_value=mock_session_obj)
 
             with patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
                 await _handle_resume_mode(mock_callback_update, mock_context, "session123:continue")

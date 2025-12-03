@@ -665,20 +665,20 @@ async def _create_session(
     project_path: str,
     project_name: str | None = None,
 ) -> None:
-    """Create a new session."""
-    user_id = update.effective_user.id
+    """Set up context for a new session (lazy SQLite creation)."""
+    # Create a temporary session object for context
+    # SQLite record will be created lazily when SDK returns session_id
+    from types import SimpleNamespace
 
-    async with get_session() as db:
-        repo = SessionRepository(db)
-        session = await repo.create_session(
-            telegram_user_id=user_id,
-            project_path=project_path,
-            project_name=project_name,
-        )
-        # Store session in user_data for quick access
-        context.user_data["current_session"] = session
-        context.user_data["current_session_id"] = session.id
-        context.user_data["current_project_path"] = project_path
+    temp_session = SimpleNamespace(
+        id=None,  # No ID yet - will be set from SDK
+        project_path=project_path,
+        project_name=project_name,
+        total_cost_usd=0.0,
+    )
+
+    context.user_data["current_session"] = temp_session
+    context.user_data["current_project_path"] = project_path
 
     # Refresh commands for this project
     registry = context.bot_data.get("command_registry")
@@ -693,7 +693,7 @@ async def _create_session(
     mcp_msg = f"\n🔌 {mcp_count} MCP server(s) enabled." if mcp_count > 0 else ""
 
     await update.message.reply_text(
-        f"✅ Created new session for {display_name}\n"
+        f"✅ Ready for new session in {display_name}\n"
         f"📋 {cmd_count} Claude command(s) available.{mcp_msg}\n\n"
         "Send a message to start chatting with Claude."
     )

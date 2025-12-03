@@ -47,21 +47,14 @@ async def test_session_id_stored_in_user_data():
         "command_registry": MagicMock(refresh=AsyncMock(return_value=5)),
     }
 
-    mock_session = MagicMock(id="session123", claude_session_id=None)
-    mock_repo = MagicMock()
-    mock_repo.create_session = AsyncMock(return_value=mock_session)
+    # With lazy session creation, no database call is made yet
+    # Session ID will be None until SDK returns it
+    await handle_callback(update, context)
 
-    with patch("src.bot.callbacks.get_session") as mock_get_session, \
-         patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
-        mock_get_session.return_value.__aenter__ = AsyncMock(return_value=MagicMock())
-        mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
-
-        await handle_callback(update, context)
-
-    # Verify session ID stored in user_data
-    assert "current_session_id" in context.user_data
-    assert context.user_data["current_session_id"] == "session123"
-    # Also verify project_path is stored
+    # Verify session is set up but ID is None (lazy creation)
+    assert "current_session" in context.user_data
+    assert context.user_data["current_session"].id is None
+    # Verify project_path is stored
     assert "current_project_path" in context.user_data
     assert context.user_data["current_project_path"] == "/home/user/myapp"
 
