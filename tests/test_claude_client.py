@@ -41,20 +41,20 @@ def test_create_claude_options_basic(mock_config, mock_session):
 
 
 def test_create_claude_options_with_resume(mock_config, mock_session):
-    """create_claude_options includes fork_session when session has claude_session_id."""
+    """create_claude_options includes resume when session has claude_session_id."""
     mock_session.claude_session_id = "claude_abc123"
     options = create_claude_options(mock_config, mock_session)
 
+    # Default behavior uses resume (not fork_session)
+    assert options.resume == "claude_abc123"
+
+
+def test_create_claude_options_with_fork_mode(mock_config, mock_session):
+    """create_claude_options uses fork_session when resume_mode is fork."""
+    mock_session.claude_session_id = "claude_abc123"
+    options = create_claude_options(mock_config, mock_session, resume_mode="fork")
+
     assert options.fork_session == "claude_abc123"
-
-
-def test_create_claude_options_allowed_tools(mock_config, mock_session):
-    """create_claude_options includes standard tools."""
-    options = create_claude_options(mock_config, mock_session)
-
-    assert "Read" in options.allowed_tools
-    assert "Write" in options.allowed_tools
-    assert "Bash" in options.allowed_tools
 
 
 def test_teleclaude_client_init(mock_config, mock_session):

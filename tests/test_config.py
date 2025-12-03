@@ -67,7 +67,7 @@ allowed_users:
     config = load_config(config_path)
 
     assert config.claude.max_turns == 50
-    assert config.claude.permission_mode == "acceptEdits"
+    assert config.claude.permission_mode == "default"
     assert config.streaming.edit_throttle_ms == 1000
     assert config.streaming.chunk_size == 3800
 

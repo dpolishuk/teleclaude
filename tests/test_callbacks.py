@@ -1,6 +1,7 @@
 """Test callback handlers."""
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
 from src.bot.callbacks import handle_callback, parse_callback_data
 
 
@@ -72,7 +73,22 @@ async def test_handle_callback_project_selection(mock_update, mock_context):
     """handle_callback processes project selection."""
     mock_update.callback_query.data = "project:myapp"
 
-    await handle_callback(mock_update, mock_context)
+    # Mock database session and repository
+    mock_session = MagicMock()
+    mock_repo = MagicMock()
+    mock_repo.create_session = AsyncMock(return_value=MagicMock(id="test123"))
+
+    # Mock command registry
+    mock_registry = MagicMock()
+    mock_registry.refresh = AsyncMock(return_value=5)
+    mock_context.bot_data["command_registry"] = mock_registry
+
+    with patch("src.bot.callbacks.get_session") as mock_get_session, \
+         patch("src.bot.callbacks.SessionRepository", return_value=mock_repo):
+        mock_get_session.return_value.__aenter__ = AsyncMock(return_value=mock_session)
+        mock_get_session.return_value.__aexit__ = AsyncMock(return_value=None)
+
+        await handle_callback(mock_update, mock_context)
 
     mock_update.callback_query.answer.assert_called()
 
