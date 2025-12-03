@@ -223,3 +223,44 @@ def relative_time(dt: datetime) -> str:
         return f"{weeks}w ago"
 
     return dt.strftime("%b %d")
+
+
+def get_session_last_message(
+    session_file: str,
+    max_length: int = 100,
+) -> str | None:
+    """Get the last user message from a Claude session file.
+
+    Args:
+        session_file: Path to session .jsonl file
+        max_length: Maximum length of returned message
+
+    Returns:
+        Last user message content, truncated if needed, or None if not found
+    """
+    path = Path(session_file)
+    if not path.exists():
+        return None
+
+    try:
+        last_user_message = None
+        with open(path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if entry.get("type") == "human":
+                        content = entry.get("message", {}).get("content", "")
+                        if content:
+                            last_user_message = content
+                except json.JSONDecodeError:
+                    continue
+
+        if last_user_message and len(last_user_message) > max_length:
+            return last_user_message[:max_length] + "..."
+        return last_user_message
+
+    except Exception:
+        return None
